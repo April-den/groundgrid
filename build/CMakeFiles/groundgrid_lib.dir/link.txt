@@ -1,0 +1,2 @@
+/usr/bin/ar qc libgroundgrid_lib.a  CMakeFiles/groundgrid_lib.dir/cpp/groundgrid/main.cpp.o CMakeFiles/groundgrid_lib.dir/cpp/groundgrid/GroundGrid.cpp.o CMakeFiles/groundgrid_lib.dir/cpp/groundgrid/GroundGridNode.cpp.o CMakeFiles/groundgrid_lib.dir/cpp/groundgrid/GroundGridNodelet.cpp.o CMakeFiles/groundgrid_lib.dir/cpp/groundgrid/GroundSegmentation.cpp.o CMakeFiles/groundgrid_lib.dir/cpp/groundgrid/GridMap.cpp.o
+/usr/bin/ranlib libgroundgrid_lib.a
