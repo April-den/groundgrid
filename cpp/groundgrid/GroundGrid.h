@@ -110,8 +110,8 @@ class GroundGrid {
         tPose poseDiff;
         poseDiff.point.poseX = inOdom.point.poseX-mLastPose.point.poseX;
         poseDiff.point.poseY = inOdom.point.poseY-mLastPose.point.poseY;
-        // std::vector<grid_map::BufferRegion> damage;
-        // map.move(grid_map::Position(inOdom.point.poseX,inOdom.point.poseY),damage);
+        std::vector<grid_map::BufferRegion> damage;
+        map.move(grid_map::Position(inOdom.point.poseX,inOdom.point.poseY),damage);
     };
 
     private:
