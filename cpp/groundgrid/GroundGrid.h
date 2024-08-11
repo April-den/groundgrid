@@ -27,72 +27,78 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Grid map
 #include "GridMap.h"
+#include "iterations.h"
 
-class tPoint{
-    public:
-        float poseX, poseY, poseZ, intensity;
-        uint32_t ring;
-        std::string frame_id;
-        tPoint(){};
-        virtual ~tPoint(){};
-        tPoint& operator=(const tPoint& other) {
-            if (this == &other)
-                return *this;
-            poseX = other.poseX;
-            poseY = other.poseY;
-            poseZ = other.poseZ;
-            intensity = other.intensity;
-            ring = other.ring;
-            frame_id = other.frame_id;
+class tPoint
+{
+public:
+    float poseX, poseY, poseZ, intensity;
+    uint32_t ring;
+    std::string frame_id;
+    tPoint() {};
+    virtual ~tPoint() {};
+    tPoint &operator=(const tPoint &other)
+    {
+        if (this == &other)
             return *this;
-        }
+        poseX = other.poseX;
+        poseY = other.poseY;
+        poseZ = other.poseZ;
+        intensity = other.intensity;
+        ring = other.ring;
+        frame_id = other.frame_id;
+        return *this;
+    }
 };
 
-class tPose{
-    public:
-        tPoint point;
-        float orientationX, orientationY, orientationZ, orientationW;
-        std::string frame_id;
-        tPose(){};
-        virtual ~tPose(){};
-        tPose& operator=(const tPose& other) {
-            if (this == &other)
-                return *this;
-            point = other.point;
-            orientationX = other.orientationX;
-            orientationY = other.orientationY;
-            orientationZ = other.orientationZ;
-            orientationW = other.orientationW;
-            frame_id = other.frame_id;
+class tPose
+{
+public:
+    tPoint point;
+    float orientationX, orientationY, orientationZ, orientationW;
+    std::string frame_id;
+    tPose() {};
+    virtual ~tPose() {};
+    tPose &operator=(const tPose &other)
+    {
+        if (this == &other)
             return *this;
-        }
+        point = other.point;
+        orientationX = other.orientationX;
+        orientationY = other.orientationY;
+        orientationZ = other.orientationZ;
+        orientationW = other.orientationW;
+        frame_id = other.frame_id;
+        return *this;
+    }
 };
 
-class GroundGrid {
-   public:
-
+class GroundGrid
+{
+public:
     /** Constructor.
      */
-    GroundGrid(){};
+    GroundGrid() {};
 
     /** Destructor.
      */
-    virtual ~GroundGrid(){};
+    virtual ~GroundGrid() {};
 
     /** Sets the current dynamic configuration.
      **
      ** @param config
      */
 
-    void initGroundGrid(const tPose &inOdom){
-        mMap_ptr = std::make_shared<grid_map::GridMap, const std::vector< std::string >>({"points", "ground", "groundpatch", "minGroundHeight", "maxGroundHeight"});
+    void initGroundGrid(const tPose &inOdom)
+    {
+        mMap_ptr = std::make_shared<grid_map::GridMap, const std::vector<std::string>>({"points", "ground", "groundpatch", "minGroundHeight", "maxGroundHeight"});
         tPose odomPose;
-        grid_map::GridMap& map = *mMap_ptr;
+        grid_map::GridMap &map = *mMap_ptr;
         map.setFrameId("map");
-        map.setGeometry(grid_map::Length(static_cast<double>(mDimension),static_cast<double>(mDimension)),static_cast<double>(mResolution),grid_map::Position(static_cast<double>(inOdom.point.poseX),static_cast<double>(inOdom.point.poseY)));
-        odomPose = inOdom; 
+        map.setGeometry(grid_map::Length(static_cast<double>(mDimension), static_cast<double>(mDimension)), static_cast<double>(mResolution), grid_map::Position(static_cast<double>(inOdom.point.poseX), static_cast<double>(inOdom.point.poseY)));
+        odomPose = inOdom;
         std::vector<grid_map::BufferRegion> damage;
-        map.move(grid_map::Position(static_cast<double>(odomPose.point.poseX),static_cast<double>(odomPose.point.poseY)),damage);
+        map.move(grid_map::Position(static_cast<double>(odomPose.point.poseX), static_cast<double>(odomPose.point.poseY)), damage);
         map["points"].setZero();
         map["ground"].setConstant(inOdom.point.poseZ);
         map["groundpatch"].setConstant(0.0000001);
@@ -101,24 +107,55 @@ class GroundGrid {
         mLastPose = inOdom;
     };
 
-    std::shared_ptr<grid_map::GridMap> update(const tPose &inOdom){
-        if(!mMap_ptr){
+    std::shared_ptr<grid_map::GridMap> update(const tPose &inOdom)
+    {
+        if (!mMap_ptr)
+        {
             initGroundGrid(inOdom);
             return mMap_ptr;
         }
-        grid_map::GridMap& map = *mMap_ptr;
+        grid_map::GridMap &map = *mMap_ptr;
         tPose poseDiff;
-        poseDiff.point.poseX = inOdom.point.poseX-mLastPose.point.poseX;
-        poseDiff.point.poseY = inOdom.point.poseY-mLastPose.point.poseY;
+        poseDiff.point.poseX = inOdom.point.poseX - mLastPose.point.poseX;
+        poseDiff.point.poseY = inOdom.point.poseY - mLastPose.point.poseY;
         std::vector<grid_map::BufferRegion> damage;
-        map.move(grid_map::Position(inOdom.point.poseX,inOdom.point.poseY),damage);
+        map.move(grid_map::Position(inOdom.point.poseX, inOdom.point.poseY), damage);
+
+        tPoint ps;
+        ps.frame_id = "map";
+        grid_map::Position pos;
+
+        for (auto region : damage)
+        {
+            for (auto it = grid_map::SubmapIterator(map, region); !it.isPastEnd(); ++it)
+            {
+                auto idx = *it;
+
+                map.getPosition(idx, pos);
+                ps.poseX = pos(0);
+                ps.poseY = pos(1);
+                ps.poseZ = 0;
+                // tf2::doTransform(ps, ps, base_to_map);
+                map.at("ground", idx) = -ps.poseZ;
+                map.at("groundpatch", idx) = 0.0;
+            }
+        }
+
+        // We havent moved so we have nothing to do
+        if (damage.empty())
+            return mMap_ptr;
+
+        mLastPose.point= inOdom.point;
+        mLastPose.frame_id = inOdom.frame_id;
+
+        map.convertToDefaultStartIndex();
+
         return mMap_ptr;
     };
 
-    private:
-        const float mResolution = .33f;
-        const float mDimension = 120.0f;
-        std::shared_ptr<grid_map::GridMap> mMap_ptr;
-        tPose mLastPose;
+private:
+    const float mResolution = .33f;
+    const float mDimension = 120.0f;
+    std::shared_ptr<grid_map::GridMap> mMap_ptr;
+    tPose mLastPose;
 };
-
