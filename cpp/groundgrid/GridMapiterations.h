@@ -1,5 +1,6 @@
 #pragma once
 #include "GridMap.h"
+
 namespace grid_map
 {
 

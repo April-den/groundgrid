@@ -27,12 +27,12 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Grid map
 #include "GridMap.h"
-#include "iterations.h"
+#include "GridMapiterations.h"
 
 class tPoint
 {
 public:
-    float poseX, poseY, poseZ, intensity;
+    double poseX, poseY, poseZ, intensity;
     uint32_t ring;
     std::string frame_id;
     tPoint() {};
@@ -55,7 +55,7 @@ class tPose
 {
 public:
     tPoint point;
-    float orientationX, orientationY, orientationZ, orientationW;
+    double orientationX, orientationY, orientationZ, orientationW;
     std::string frame_id;
     tPose() {};
     virtual ~tPose() {};
@@ -95,10 +95,10 @@ public:
         tPose odomPose;
         grid_map::GridMap &map = *mMap_ptr;
         map.setFrameId("map");
-        map.setGeometry(grid_map::Length(static_cast<double>(mDimension), static_cast<double>(mDimension)), static_cast<double>(mResolution), grid_map::Position(static_cast<double>(inOdom.point.poseX), static_cast<double>(inOdom.point.poseY)));
+        map.setGeometry(grid_map::Length(mDimension, mDimension), mResolution, grid_map::Position(inOdom.point.poseX, inOdom.point.poseY));
         odomPose = inOdom;
         std::vector<grid_map::BufferRegion> damage;
-        map.move(grid_map::Position(static_cast<double>(odomPose.point.poseX), static_cast<double>(odomPose.point.poseY)), damage);
+        map.move(grid_map::Position(odomPose.point.poseX, odomPose.point.poseY), damage);
         map["points"].setZero();
         map["ground"].setConstant(inOdom.point.poseZ);
         map["groundpatch"].setConstant(0.0000001);
@@ -135,7 +135,7 @@ public:
                 ps.poseX = pos(0);
                 ps.poseY = pos(1);
                 ps.poseZ = 0;
-                // tf2::doTransform(ps, ps, base_to_map);
+                simpleTranslation(ps,inOdom);
                 map.at("ground", idx) = -ps.poseZ;
                 map.at("groundpatch", idx) = 0.0;
             }
@@ -152,10 +152,21 @@ public:
 
         return mMap_ptr;
     };
+    //Ignore rotation, only consider translation
+    void simpleTranslation(tPoint &ps, const tPose inOdom){
+        
+        ps.poseX = inOdom.point.poseX+ps.poseX;
+        ps.poseY = inOdom.point.poseY+ps.poseY;
+        ps.poseZ = inOdom.point.poseZ+ps.poseZ;
+
+        ps.poseX = ps.poseX - kitti_base_to_baseX;
+        ps.poseY = ps.poseY - kitti_base_to_baseY;
+        ps.poseZ = ps.poseZ - kitti_base_to_baseZ;
+    };
 
 private:
-    const float mResolution = .33f;
-    const float mDimension = 120.0f;
+    const double mResolution = .33f;
+    const double mDimension = 120.0f;
     std::shared_ptr<grid_map::GridMap> mMap_ptr;
     tPose mLastPose;
 };
