@@ -162,6 +162,33 @@ namespace grid_map
         return true;
     }
 
+    bool checkIfPositionWithinMap(const Position &position,
+                                  const Length &mapLength,
+                                  const Position &mapPosition)
+    {
+        Vector offset;
+        getVectorToOrigin(offset, mapLength);
+        Position positionTransformed = getMapFrameToBufferOrderTransformation().cast<double>() * (position - mapPosition - offset);
+
+        return positionTransformed.x() >= 0.0 && positionTransformed.y() >= 0.0 && positionTransformed.x() < mapLength(0) && positionTransformed.y() < mapLength(1);
+    }
+
+    inline bool getVectorToOrigin(Vector &vectorToOrigin, const Length &mapLength)
+    {
+        vectorToOrigin = (0.5 * mapLength).matrix();
+        return true;
+    }
+
+    inline Eigen::Matrix2i getMapFrameToBufferOrderTransformation()
+    {
+        return getBufferOrderToMapFrameTransformation().transpose();
+    }
+
+    inline Eigen::Matrix2i getBufferOrderToMapFrameTransformation()
+    {
+        return -Eigen::Matrix2i::Identity();
+    }
+
     class BufferRegion
     {
     public:
@@ -481,10 +508,37 @@ namespace grid_map
             startIndex_.setZero();
         }
 
-        inline bool getVectorToOrigin(Vector &vectorToOrigin, const Length &mapLength)
+        void GridMap::add(const std::string &layer, const double value)
         {
-            vectorToOrigin = (0.5 * mapLength).matrix();
-            return true;
+            add(layer, Matrix::Constant(size_(0), size_(1), value));
+        }
+
+        void GridMap::add(const std::string &layer, const Matrix &data)
+        {
+            assert(size_(0) == data.rows());
+            assert(size_(1) == data.cols());
+
+            if (exists(layer))
+            {
+                // Type exists already, overwrite its data.
+                data_.at(layer) = data;
+            }
+            else
+            {
+                // Type does not exist yet, add type and data.
+                data_.insert(std::pair<std::string, Matrix>(layer, data));
+                layers_.push_back(layer);
+            }
+        }
+
+        bool exists(const std::string &layer) const
+        {
+            return !(data_.find(layer) == data_.end());
+        }
+
+        bool isInside(const Position &position) const
+        {
+            return checkIfPositionWithinMap(position, length_, position_);
         }
 
         inline bool checkIfStartIndexAtDefaultPosition(const Index &bufferStartIndex)
@@ -495,17 +549,6 @@ namespace grid_map
         inline Eigen::Matrix2i getBufferOrderToMapFrameTransformation()
         {
             return -Eigen::Matrix2i::Identity();
-        }
-
-        bool checkIfPositionWithinMap(const Position &position,
-                                      const Length &mapLength,
-                                      const Position &mapPosition)
-        {
-            Vector offset;
-            getVectorToOrigin(offset, mapLength);
-            Position positionTransformed = getBufferOrderToMapFrameTransformation().transpose().cast<double>() * (position - mapPosition - offset);
-
-            return positionTransformed.x() >= 0.0 && positionTransformed.y() >= 0.0 && positionTransformed.x() < mapLength(0) && positionTransformed.y() < mapLength(1);
         }
 
         bool checkIfIndexInRange(const Index &index, const Size &bufferSize)
@@ -527,6 +570,11 @@ namespace grid_map
             Index indexTem = {-indexVector[0], -indexVector[1]};
             index = getBufferIndexFromIndex(indexTem, size_, startIndex_);
             return checkIfPositionWithinMap(position, mapLength, mapPosition) && checkIfIndexInRange(index, bufferSize);
+        }
+
+        double GridMap::getResolution() const
+        {
+            return resolution_;
         }
 
         bool getIndex(const Position &position, Index &index)

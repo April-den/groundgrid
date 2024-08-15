@@ -57,7 +57,7 @@ public:
     tPoint point;
     double orientationX, orientationY, orientationZ, orientationW;
     std::string frame_id;
-    tPose() {};
+    tPose() {point.poseX=0.0;point.poseY=0.0;point.poseZ=0.0;};
     virtual ~tPose() {};
     tPose &operator=(const tPose &other)
     {
