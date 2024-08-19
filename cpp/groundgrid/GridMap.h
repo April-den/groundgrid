@@ -162,6 +162,22 @@ namespace grid_map
         return true;
     }
 
+    inline bool getVectorToOrigin(Vector &vectorToOrigin, const Length &mapLength)
+    {
+        vectorToOrigin = (0.5 * mapLength).matrix();
+        return true;
+    }
+
+    inline Eigen::Matrix2i getBufferOrderToMapFrameTransformation()
+    {
+        return -Eigen::Matrix2i::Identity();
+    }
+
+    inline Eigen::Matrix2i getMapFrameToBufferOrderTransformation()
+    {
+        return getBufferOrderToMapFrameTransformation().transpose();
+    }
+
     bool checkIfPositionWithinMap(const Position &position,
                                   const Length &mapLength,
                                   const Position &mapPosition)
@@ -173,21 +189,7 @@ namespace grid_map
         return positionTransformed.x() >= 0.0 && positionTransformed.y() >= 0.0 && positionTransformed.x() < mapLength(0) && positionTransformed.y() < mapLength(1);
     }
 
-    inline bool getVectorToOrigin(Vector &vectorToOrigin, const Length &mapLength)
-    {
-        vectorToOrigin = (0.5 * mapLength).matrix();
-        return true;
-    }
-
-    inline Eigen::Matrix2i getMapFrameToBufferOrderTransformation()
-    {
-        return getBufferOrderToMapFrameTransformation().transpose();
-    }
-
-    inline Eigen::Matrix2i getBufferOrderToMapFrameTransformation()
-    {
-        return -Eigen::Matrix2i::Identity();
-    }
+    
 
     class BufferRegion
     {
@@ -508,12 +510,12 @@ namespace grid_map
             startIndex_.setZero();
         }
 
-        void GridMap::add(const std::string &layer, const double value)
+        void add(const std::string &layer, const double value)
         {
             add(layer, Matrix::Constant(size_(0), size_(1), value));
         }
 
-        void GridMap::add(const std::string &layer, const Matrix &data)
+        void add(const std::string &layer, const Matrix &data)
         {
             assert(size_(0) == data.rows());
             assert(size_(1) == data.cols());
@@ -572,7 +574,7 @@ namespace grid_map
             return checkIfPositionWithinMap(position, mapLength, mapPosition) && checkIfIndexInRange(index, bufferSize);
         }
 
-        double GridMap::getResolution() const
+        double getResolution() const
         {
             return resolution_;
         }

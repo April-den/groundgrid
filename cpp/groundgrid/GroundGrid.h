@@ -28,6 +28,9 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Grid map
 #include "GridMap.h"
 #include "GridMapiterations.h"
+extern double kitti_base_to_baseX;
+extern double kitti_base_to_baseY;
+extern double kitti_base_to_baseZ;
 
 class tPoint
 {

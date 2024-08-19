@@ -8,6 +8,20 @@
 #include <thread>
 #include <algorithm>
 
+extern size_t thread_count; // default 8, max 64, min 1
+extern uint32_t max_ring;
+extern double min_outlier_detection_ground_confidence ;
+extern double outlier_tolerance;
+extern double patch_size_change_distance;
+extern double minimum_distance_factor;
+extern double miminum_point_height_threshold;
+extern double minimum_point_height_obstacle_threshold;
+extern double ground_patch_detection_minimum_point_count_threshold;
+extern double distance_factor;
+extern int point_count_cell_variance_threshold;
+extern double occupied_cells_point_count_factor;
+extern double occupied_cells_decrease_factor;
+
 namespace groundgrid
 {
   class GroundSegmentation
@@ -129,14 +143,14 @@ namespace groundgrid
 
         if (tolerance + groundheight < point.poseZ)
         { // non-ground points
-          tPoint &segmented_point = filtered_cloud.emplace_back(point);
-          segmented_point.intensity = 99;
+          filtered_cloud.push_back(point);
+          filtered_cloud.back().intensity = 99;
           gpl(gi(0), gi(1)) += 1.0f;
         }
         else
         {
-          tPoint &segmented_point = filtered_cloud.emplace_back(point); // ground point
-          segmented_point.intensity = 49;
+          filtered_cloud.push_back(point); // ground point
+          filtered_cloud.back().intensity = 49;
         }
       }
 
@@ -145,8 +159,8 @@ namespace groundgrid
       {
         const tPoint &point = cloud[i];
         const bool ground_point = point.ring == 40 || point.ring == 44 || point.ring == 48 || point.ring == 49 || point.ring == 60 || point.ring == 72;
-        tPoint &segmented_point = filtered_cloud.emplace_back(point); // ground point
-        segmented_point.intensity = 49;
+        filtered_cloud.push_back(point); // ground point
+        filtered_cloud.back().intensity = 49;
       }
       return filtered_cloud;
     }
@@ -316,31 +330,31 @@ namespace groundgrid
       float &oldGroundheight = ggl(i, j);
 
       // early skipping of (almost) empty areas
-      if (pointsblockSum < std::max(std::floor(mConfig.ground_patch_detection_minimum_point_count_threshold * patchSize * expectedPointCountperLaserperCell), 3.0))
+      if (pointsblockSum < std::max(std::floor(ground_patch_detection_minimum_point_count_threshold * patchSize * expectedPointCountperLaserperCell), 3.0))
         return;
 
       // calculation of variance threshold
       // limit the value to the defined minimum and 10 times the defined minimum
-      const float varThresholdsq = std::min(std::max(sqdist * std::pow(mConfig.distance_factor, 2.0), std::pow(mConfig.minimum_distance_factor, 2.0)), std::pow(mConfig.minimum_distance_factor * 10, 2.0));
+      const float varThresholdsq = std::min(std::max(sqdist * std::pow(distance_factor, 2.0), std::pow(minimum_distance_factor, 2.0)), std::pow(minimum_distance_factor * 10, 2.0));
       const auto &varblock = ggv.block<S, S>(i - center_idx, j - center_idx);
       const auto &minblock = gmi.block<S, S>(i - center_idx, j - center_idx);
       const float &variance = varblock(center_idx, center_idx);
       const float &localmin = minblock.minCoeff();
-      const float maxVar = pointsBlock(center_idx, center_idx) >= mConfig.point_count_cell_variance_threshold ? variance : pointsBlock.array().cwiseProduct(varblock.array()).sum() / pointsblockSum;
+      const float maxVar = pointsBlock(center_idx, center_idx) >= point_count_cell_variance_threshold ? variance : pointsBlock.array().cwiseProduct(varblock.array()).sum() / pointsblockSum;
       const float groundlevel = pointsBlock.cwiseProduct(minblock).sum() / pointsblockSum;
       const float groundDiff = std::max((groundlevel - oldGroundheight) * (2.0f * oldConfidence), 1.0f);
 
       // Do not update known high confidence estimations upward
-      if (oldConfidence > 0.5 && groundlevel >= oldGroundheight + mConfig.outlier_tolerance)
+      if (oldConfidence > 0.5 && groundlevel >= oldGroundheight + outlier_tolerance)
         return;
 
-      if (varThresholdsq > std::pow(maxVar, 2.0) && maxVar > 0 && pointsblockSum > (groundDiff * expectedPointCountperLaserperCell * patchSize) * mConfig.ground_patch_detection_minimum_point_count_threshold)
+      if (varThresholdsq > std::pow(maxVar, 2.0) && maxVar > 0 && pointsblockSum > (groundDiff * expectedPointCountperLaserperCell * patchSize) * ground_patch_detection_minimum_point_count_threshold)
       {
-        const float &newConfidence = std::min(pointsblockSum / mConfig.occupied_cells_point_count_factor, 1.0);
+        const float &newConfidence = std::min(pointsblockSum / occupied_cells_point_count_factor, 1.0);
         // calculate ground height
         oldGroundheight = (groundlevel * newConfidence + oldConfidence * oldGroundheight * 2) / (newConfidence + oldConfidence * 2);
         // update confidence
-        oldConfidence = std::min((pointsblockSum / (mConfig.occupied_cells_point_count_factor * 2.0f) + oldConfidence) / 2.0, 1.0);
+        oldConfidence = std::min((pointsblockSum / (occupied_cells_point_count_factor * 2.0f) + oldConfidence) / 2.0, 1.0);
       }
       else if (localmin < oldGroundheight)
       {
@@ -402,7 +416,7 @@ namespace groundgrid
       }
     }
 
-    void GroundSegmentation::interpolate_cell(grid_map::GridMap &map, const size_t x, const size_t y) const
+    void interpolate_cell(grid_map::GridMap &map, const size_t x, const size_t y) const
     {
       static const auto &center_idx = map.getSize()(0) / 2 - 1;
       static const size_t blocksize = 3;
