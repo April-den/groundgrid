@@ -11,6 +11,7 @@
 using GroundGridPtr = std::shared_ptr<GroundGrid>;
 
 void Init();
+void readPCDfile(const std::string finname, std::vector<tPoint> &points);
 void readSemanticKittiPc(const std::string &filename);
 std::vector<uint32_t> readSemanticKittiLabel(const std::string &filename);
 void processPoses(const std::string &poseFileName);
@@ -44,10 +45,81 @@ void Init()
 {
   const std::string pcFileName = "/home/aiyang/SemanticKITTI/00/velodyne/000020.bin";
   const std::string poseFileName = "/home/aiyang/SemanticKITTI/00/poses.txt";
-  readSemanticKittiPc(pcFileName);
+  const std::string pcdFile = "/home/aiyang/00/pcd/004390.pcd";
+  // readSemanticKittiPc(pcFileName);
+  readPCDfile(pcdFile, pc);
   processPoses(poseFileName);
   sendPosition();
   sendClouds();
+}
+
+void readPCDfile(const std::string finname, std::vector<tPoint> &points)
+{
+  std::ifstream fin(finname, std::ios::binary);
+  if (fin.bad())
+  {
+    std::cout << "Fail to open pcd file" << std::endl;
+    return;
+  }
+
+  char s[11][1024]; // Header
+  int Points_Num;
+  std::string data_columns_type;
+  std::string data_type;
+  for (int i = 0; i < 11; ++i)
+  {
+    fin.getline(s[i], 1024);
+    std::cout << s[i] << std::endl;
+
+    // FIELDS x y z rgb
+    if (i == 2)
+    {
+      std::string s2 = s[2];
+      size_t pos = s2.find("FIELDS");
+      size_t size = s2.size();
+      data_columns_type = s2.substr(pos + 7, size);
+    }
+
+    // POINTS xxx
+    if (i == 9)
+    {
+      std::string s9 = s[9], Points_Str;
+      size_t pos = s9.find("POINTS");
+      size_t size = s9.size();
+      Points_Str = s9.substr(pos + 7, size);
+      Points_Num = atoi(Points_Str.c_str());
+    }
+
+    if (i == 10)
+    {
+      std::string s10 = s[10], DATA_SIZE;
+      size_t pos = s10.find("DATA");
+      size_t size = s10.size();
+      data_type = s10.substr(pos + 5, size);
+    }
+  }
+  std::cout << "pc size: "<< pc.size()<<std::endl;
+
+  tPoint p;
+  std::cout << "data_columns_type: " << data_columns_type << std::endl;
+  std::cout << "data_type: " << data_type << std::endl;
+  if ((data_columns_type == "x y z intensity") && (data_type == "binary"))
+  {
+    std::cout << "start to read point ....." << std::endl;
+    while (fin.peek() != EOF)
+    {
+      float temX, temY, temZ, temIntensity;
+      fin.read(reinterpret_cast<char *>(&temX), sizeof(float));
+      fin.read(reinterpret_cast<char *>(&temY), sizeof(float));
+      fin.read(reinterpret_cast<char *>(&temZ), sizeof(float));
+      fin.read(reinterpret_cast<char *>(&temIntensity), sizeof(float));
+      p.poseX = static_cast<double>(temX);
+      p.poseY = static_cast<double>(temY);
+      p.poseZ = static_cast<double>(temZ);
+      p.intensity = static_cast<double>(temIntensity);
+      points.push_back(p);
+    }
+  }
 }
 
 void readSemanticKittiPc(const std::string &filename)
@@ -192,7 +264,7 @@ Eigen::Quaterniond quaternionMultiply(const Eigen::Quaterniond &q1, const Eigen:
 
 void sendClouds()
 {
-  const std::string labelFileName = "/home/aiyang/SemanticKITTI/00/labels/000020.label";
+  const std::string labelFileName = "/home/aiyang/SemanticKITTI/00/labels/004390.label";
   std::vector<uint32_t> labels = readSemanticKittiLabel(labelFileName);
   if (labels.size() == pc.size())
   {
