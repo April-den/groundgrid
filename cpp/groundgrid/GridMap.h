@@ -189,8 +189,6 @@ namespace grid_map
         return positionTransformed.x() >= 0.0 && positionTransformed.y() >= 0.0 && positionTransformed.x() < mapLength(0) && positionTransformed.y() < mapLength(1);
     }
 
-    
-
     class BufferRegion
     {
     public:
@@ -577,6 +575,11 @@ namespace grid_map
         double getResolution() const
         {
             return resolution_;
+        }
+
+        const std::vector<std::string> &getLayers() const
+        {
+            return layers_;
         }
 
         bool getIndex(const Position &position, Index &index)

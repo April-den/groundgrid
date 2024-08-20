@@ -125,7 +125,7 @@ public:
         map.move(grid_map::Position(inOdom.point.poseX, inOdom.point.poseY), damage);
 
         tPoint ps;
-        ps.frame_id = "map";
+      
         grid_map::Position pos;
 
         for (auto region : damage)
@@ -167,9 +167,10 @@ public:
         ps.poseZ = ps.poseZ - kitti_base_to_baseZ;
     };
 
-private:
     const double mResolution = .33f;
     const double mDimension = 120.0f;
+
+private:
     std::shared_ptr<grid_map::GridMap> mMap_ptr;
     tPose mLastPose;
 };

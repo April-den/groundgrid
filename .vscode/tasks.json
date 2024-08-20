@@ -13,7 +13,8 @@
                 "${fileDirname}/GridMap.h",
                 "${fileDirname}/GroundGrid.h",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "${fileDirname}/${fileBasenameNoExtension}",
+                "-lpthread"
             ],
             "options": {
                 "cwd": "${fileDirname}"

@@ -21,7 +21,7 @@ Eigen::Quaterniond quaternionFromeuler(double yaw, double pitch, double row);
 Eigen::Vector3d eulerFromQuaternion(const Eigen::Quaterniond &q);
 Eigen::Quaterniond quaternionMultiply(const Eigen::Quaterniond &q1, const Eigen::Quaterniond &q2);
 void sendClouds();
-// void points_callback(std::vector<tPoint> pc);
+void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &ground_segmentation_);
 void odom_callback(tPose inOdom);
 // void publish_grid_map_layer(const std::string &layer_name, const int seq = 0);
 
@@ -37,8 +37,10 @@ int main()
   Init();
 
   groundgrid_ = std::make_shared<GroundGrid>();
+  groundgrid::GroundSegmentation ground_segmentation_;
+  ground_segmentation_.init(groundgrid_->mDimension, groundgrid_->mResolution);
   odom_callback(odomPose);
-  // points_callback(pc);
+  points_callback(pc, ground_segmentation_);
 }
 
 void Init()
@@ -98,7 +100,7 @@ void readPCDfile(const std::string finname, std::vector<tPoint> &points)
       data_type = s10.substr(pos + 5, size);
     }
   }
-  std::cout << "pc size: "<< pc.size()<<std::endl;
+  std::cout << "pc size: " << pc.size() << std::endl;
 
   tPoint p;
   std::cout << "data_columns_type: " << data_columns_type << std::endl;
@@ -290,178 +292,73 @@ void odom_callback(tPose inOdom)
   }
 }
 
-// void points_callback(std::vector<tPoint> pc)
-// {
+void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &ground_segmentation_)
+{
 
-//   static size_t time_vals = 0;
-//   tPose mapToBaseTransform, cloudOriginTransform;
+  static size_t time_vals = 0;
+  tPose mapToBaseTransform, cloudOriginTransform;
 
-//   // Map not initialized yet, this means the node hasn't received any odom message so far.
-//   if (!map_ptr_)
-//     return;
+  // Map not initialized yet, this means the node hasn't received any odom message so far.
+  if (!map_ptr_)
+    return;
 
-//   // origin code mapToBaseTransform = mTfBuffer.lookupTransform("map", "base_link", cloud_msg->header.stamp, ros::Duration(0.0));
-//   // function find transformation paramters from base_link to map
-//   mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX + odomPose.point.poseX;
-//   mapToBaseTransform.point.poseY = odomPose.point.poseY + mapToBaseTransform.point.poseY;
-//   mapToBaseTransform.point.poseZ = odomPose.point.poseZ + mapToBaseTransform.point.poseZ;
+  // origin code mapToBaseTransform = mTfBuffer.lookupTransform("map", "base_link", cloud_msg->header.stamp, ros::Duration(0.0));
+  // function find transformation paramters from base_link to map
+  mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX + odomPose.point.poseX;
+  mapToBaseTransform.point.poseY = odomPose.point.poseY + mapToBaseTransform.point.poseY;
+  mapToBaseTransform.point.poseZ = odomPose.point.poseZ + mapToBaseTransform.point.poseZ;
 
-//   mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX + kitti_base_to_baseX;
-//   mapToBaseTransform.point.poseY = mapToBaseTransform.point.poseY + kitti_base_to_baseY;
-//   mapToBaseTransform.point.poseZ = mapToBaseTransform.point.poseZ + kitti_base_to_baseZ;
-//   // origin code cloudOriginTransform = mTfBuffer.lookupTransform("map", "velodyne", cloud_msg->header.stamp, ros::Duration(0.0));
-//   // function find transformation paramters from velodyne to map,
-//   cloudOriginTransform.point.poseX = cloudOriginTransform.point.poseX + odomPose.point.poseX;
-//   cloudOriginTransform.point.poseY = cloudOriginTransform.point.poseY + odomPose.point.poseY;
-//   cloudOriginTransform.point.poseZ = cloudOriginTransform.point.poseZ + odomPose.point.poseZ;
+  mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX + kitti_base_to_baseX;
+  mapToBaseTransform.point.poseY = mapToBaseTransform.point.poseY + kitti_base_to_baseY;
+  mapToBaseTransform.point.poseZ = mapToBaseTransform.point.poseZ + kitti_base_to_baseZ;
+  // origin code cloudOriginTransform = mTfBuffer.lookupTransform("map", "velodyne", cloud_msg->header.stamp, ros::Duration(0.0));
+  // function find transformation paramters from velodyne to map,
+  cloudOriginTransform.point.poseX = cloudOriginTransform.point.poseX + odomPose.point.poseX;
+  cloudOriginTransform.point.poseY = cloudOriginTransform.point.poseY + odomPose.point.poseY;
+  cloudOriginTransform.point.poseZ = cloudOriginTransform.point.poseZ + odomPose.point.poseZ;
 
-//   tPoint origin;
+  tPoint origin;
 
-//   origin.poseX = 0.0;
-//   origin.poseY = 0.0;
-//   origin.poseZ = 0.0;
+  origin.poseX = 0.0;
+  origin.poseY = 0.0;
+  origin.poseZ = 0.0;
 
-//   // tf2::doTransform(origin, origin, cloudOriginTransform);
-//   origin.poseX = origin.poseX + cloudOriginTransform.point.poseX;
-//   origin.poseY = origin.poseY + cloudOriginTransform.point.poseY;
-//   origin.poseZ = origin.poseZ + cloudOriginTransform.point.poseZ;
+  // tf2::doTransform(origin, origin, cloudOriginTransform);
+  origin.poseX = origin.poseX + cloudOriginTransform.point.poseX;
+  origin.poseY = origin.poseY + cloudOriginTransform.point.poseY;
+  origin.poseZ = origin.poseZ + cloudOriginTransform.point.poseZ;
 
-//   // Transform cloud into map coordinate system
-//   // Transform to map
-//   std::vector<tPoint> transformed_cloud;
-//   tPose transformStamped;
-//   transformed_cloud.reserve(pc.size());
-//   transformStamped = cloudOriginTransform;
-//   tPoint psIn;
+  // Transform cloud into map coordinate system
+  // Transform to map
+  std::vector<tPoint> transformed_cloud;
+  tPose transformStamped;
+  transformed_cloud.reserve(pc.size());
+  transformStamped = cloudOriginTransform;
+  tPoint psIn;
 
-//   for (int indx = 0; indx < pc.size(); indx++)
-//   {
-//     psIn.poseX = pc[indx].poseX;
-//     psIn.poseY = pc[indx].poseY;
-//     psIn.poseZ = pc[indx].poseZ;
+  for (int indx = 0; indx < pc.size(); indx++)
+  {
+    psIn.poseX = pc[indx].poseX;
+    psIn.poseY = pc[indx].poseY;
+    psIn.poseZ = pc[indx].poseZ;
 
-//     // tf2::doTransform(psIn, psIn, transformStamped);
-//     psIn.poseX = psIn.poseX + transformStamped.point.poseX;
-//     psIn.poseY = psIn.poseY + transformStamped.point.poseY;
-//     psIn.poseZ = psIn.poseZ + transformStamped.point.poseZ;
+    // tf2::doTransform(psIn, psIn, transformStamped);
+    psIn.poseX = psIn.poseX + transformStamped.point.poseX;
+    psIn.poseY = psIn.poseY + transformStamped.point.poseY;
+    psIn.poseZ = psIn.poseZ + transformStamped.point.poseZ;
 
-//     transformed_cloud[indx] = psIn;
-//     pc[indx] = transformed_cloud[indx];
-//   }
+    transformed_cloud.push_back(psIn);
+    pc[indx] = transformed_cloud[indx];
+  }
 
-//   auto end = std::chrono::steady_clock::now();
-//   ROS_DEBUG_STREAM("cloud transformation took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms");
+  tPoint origin_pclPoint;
+  origin_pclPoint.poseX = origin.poseX;
+  origin_pclPoint.poseY = origin.poseY;
+  origin_pclPoint.poseZ = origin.poseZ;
 
-//   auto start2 = std::chrono::steady_clock::now();
-//   std::clock_t c_clock = std::clock();
-//   sensor_msgs::PointCloud2 cloud_msg_out;
-//   PCLPoint origin_pclPoint;
-//   origin_pclPoint.x = origin.point.x;
-//   origin_pclPoint.y = origin.point.y;
-//   origin_pclPoint.z = origin.point.z;
-//   pcl::toROSMsg(*(ground_segmentation_.filter_cloud(cloud, origin_pclPoint, mapToBaseTransform, *map_ptr_)), cloud_msg_out);
-
-//   cloud_msg_out.header = cloud_msg->header;
-//   cloud_msg_out.header.frame_id = "map";
-//   filtered_cloud_pub_.publish(cloud_msg_out);
-//   end = std::chrono::steady_clock::now();
-//   std::chrono::duration<double> elapsed_seconds = end - start2;
-//   const double milliseconds = elapsed_seconds.count() * 1000;
-//   const double c_millis = double(std::clock() - c_clock) / CLOCKS_PER_SEC * 1000;
-//   avg_time = (milliseconds + time_vals * avg_time) / (time_vals + 1);
-//   avg_cpu_time = (c_millis + time_vals * avg_cpu_time) / (time_vals + 1);
-//   ++time_vals;
-//   ROS_INFO_STREAM("groundgrid took " << milliseconds << "ms (avg: " << avg_time << "ms)");
-//   ROS_DEBUG_STREAM("total cpu time used: " << c_millis << "ms (avg: " << avg_cpu_time << "ms)");
-
-//   grid_map_msgs::GridMap grid_map_msg;
-//   grid_map::GridMapRosConverter::toMessage(*map_ptr_, grid_map_msg);
-//   grid_map_msg.info.header.stamp = cloud_msg->header.stamp;
-//   grid_map_pub_.publish(grid_map_msg);
-
-//   const ros::NodeHandle &nh = getNodeHandle();
-//   image_transport::ImageTransport it(nh);
-
-//   for (const auto &layer : map_ptr_->getLayers())
-//   {
-//     if (layer_pubs_.find(layer) == layer_pubs_.end())
-//     {
-//       layer_pubs_[layer] = it.advertise("/groundgrid/grid_map_cv_" + layer, 1);
-//     }
-//     publish_grid_map_layer(layer_pubs_.at(layer), layer, cloud_msg->header.seq, cloud_msg->header.stamp);
-//   }
-
-//   if (terrain_im_pub_.getNumSubscribers())
-//   {
-//     publish_grid_map_layer(terrain_im_pub_, "terrain", cloud_msg->header.seq, cloud_msg->header.stamp);
-//   }
-
-//   end = std::chrono::steady_clock::now();
-//   ROS_DEBUG_STREAM("overall " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms");
-// }
-
-// void publish_grid_map_layer(const std::string &layer_name, const int seq = 0)
-// {
-//   cv::Mat img, normalized_img, color_img, mask;
-
-//   if (pub.getNumSubscribers())
-//   {
-//     if (layer_name != "terrain")
-//     {
-//       const auto &map = *map_ptr_;
-//       grid_map::GridMapCvConverter::toImage<unsigned char, 1>(map, layer_name, CV_8UC1, img);
-//       cv::applyColorMap(img, color_img, cv::COLORMAP_TWILIGHT);
-
-//       sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "8UC3", color_img).toImageMsg();
-//       msg->header.stamp = stamp;
-//       pub.publish(msg);
-//     }
-//     else
-//     { // special treatment for the terrain evaluation
-//       const auto &map = *map_ptr_;
-//       img = cv::Mat(map.getSize()(0), map.getSize()(1), CV_32FC3, cv::Scalar(0, 0, 0));
-//       normalized_img = cv::Mat(map.getSize()(0), map.getSize()(1), CV_32FC3, cv::Scalar(0, 0, 0));
-//       const grid_map::Matrix &data = map["ground"];
-//       const grid_map::Matrix &visited_layer = map["pointsRaw"];
-//       const grid_map::Matrix &gp_layer = map["groundpatch"];
-//       const float &car_height = data(181, 181);
-//       const float &ground_min = map["ground"].minCoeff() - car_height;
-//       const float &ground_max = map["ground"].maxCoeff() - car_height;
-//       if (ground_max == ground_min)
-//         return;
-
-//       for (grid_map::GridMapIterator iterator(map); !iterator.isPastEnd(); ++iterator)
-//       {
-//         const grid_map::Index index(*iterator);
-//         const float &value = data(index(0), index(1)); // - car_height;
-//         const float &gp = gp_layer(index(0), index(1));
-//         const grid_map::Index imageIndex(iterator.getUnwrappedIndex());
-//         const float &pointssum = visited_layer.block<3, 3>(index(0) - 1, index(1) - 1).sum();
-//         const float &pointcount = visited_layer(index(0), index(1));
-
-//         // img.at<cv::Point3f>(imageIndex(0), imageIndex(1)) = cv::Point3f(value, / *pointcount+1 * /pointcount >= 3 ? 1.0f : 0.0f, gp > .0 ? gp : 0.0f);
-//         img.at<cv::Point3f>(imageIndex(0), imageIndex(1)) = cv::Point3f(value, pointssum >= 27 ? 1.0f : 0.0f, pointcount);
-//       }
-
-//       geometry_msgs::TransformStamped baseToUtmTransform;
-
-//       try
-//       {
-//         baseToUtmTransform = mTfBuffer.lookupTransform("utm", "base_link", stamp, ros::Duration(0.0));
-//       }
-//       catch (tf2::TransformException &ex)
-//       {
-//         ROS_WARN("%s", ex.what());
-//         return;
-//       }
-//       geometry_msgs::PointStamped ps;
-//       ps.header.frame_id = "base_link";
-//       ps.header.stamp = stamp;
-//       tf2::doTransform(ps, ps, baseToUtmTransform);
-
-//       sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "32FC3", img).toImageMsg();
-//       msg->header.frame_id = std::to_string(seq) + "_" + std::to_string(ps.point.x) + "_" + std::to_string(ps.point.y);
-//       pub.publish(msg);
-//     }
-//   }
-// }
+  std::vector<tPoint> filteredCloud = ground_segmentation_.filter_cloud(pc, origin_pclPoint, mapToBaseTransform, *map_ptr_);
+  std::cout<< filteredCloud.size() << std::endl;
+  for(int indx=0;indx<filteredCloud.size(); indx++){
+    std::cout<< filteredCloud[indx].intensity<<"  ";
+  }
+}
