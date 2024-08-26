@@ -99,6 +99,8 @@ public:
         grid_map::GridMap &map = *mMap_ptr;
         map.setFrameId("map");
         map.setGeometry(grid_map::Length(mDimension, mDimension), mResolution, grid_map::Position(inOdom.point.poseX, inOdom.point.poseY));
+        
+        std::cout<< "siz " <<map.getSize()(0)<< "," << map.getSize()(1)<<std::endl;
         odomPose = inOdom;
         std::vector<grid_map::BufferRegion> damage;
         map.move(grid_map::Position(odomPose.point.poseX, odomPose.point.poseY), damage);
@@ -117,6 +119,7 @@ public:
             initGroundGrid(inOdom);
             return mMap_ptr;
         }
+        std::cout<< "Update"<<std::endl;
         grid_map::GridMap &map = *mMap_ptr;
         tPose poseDiff;
         poseDiff.point.poseX = inOdom.point.poseX - mLastPose.point.poseX;

@@ -1,6 +1,8 @@
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <vector>
+#include <string>
 #include <Eigen/Dense>
 #include <Eigen/LU>
 #include "GridMap.h"
@@ -35,23 +37,22 @@ GroundGridPtr groundgrid_;
 int main()
 {
   Init();
-
   groundgrid_ = std::make_shared<GroundGrid>();
   groundgrid::GroundSegmentation ground_segmentation_;
   ground_segmentation_.init(groundgrid_->mDimension, groundgrid_->mResolution);
   odom_callback(odomPose);
   points_callback(pc, ground_segmentation_);
+
 }
 
 void Init()
 {
   const std::string pcFileName = "/home/aiyang/SemanticKITTI/00/velodyne/000020.bin";
   const std::string poseFileName = "/home/aiyang/SemanticKITTI/00/poses.txt";
-  const std::string pcdFile = "/home/aiyang/00/pcd/004390.pcd";
+  const std::string pcdFile = "/home/aiyang/00/pcd/004392.pcd";
   // readSemanticKittiPc(pcFileName);
   readPCDfile(pcdFile, pc);
-  processPoses(poseFileName);
-  sendPosition();
+  // sendPosition();
   sendClouds();
 }
 
@@ -81,7 +82,17 @@ void readPCDfile(const std::string finname, std::vector<tPoint> &points)
       size_t size = s2.size();
       data_columns_type = s2.substr(pos + 7, size);
     }
-
+    if (i == 8)
+    {
+      std::string s8 = s[8], poseString;
+      size_t pos = s8.find("VIEWPOINT");
+      size_t size = s8.size();
+      poseString = s8.substr(pos + 10, size);
+      std::istringstream iss(poseString);
+      double value;
+      iss >> odomPose.point.poseX >> odomPose.point.poseY >> odomPose.point.poseZ;
+      iss >> odomPose.orientationW >> odomPose.orientationX >> odomPose.orientationY >> odomPose.orientationZ;
+    }
     // POINTS xxx
     if (i == 9)
     {
@@ -115,9 +126,9 @@ void readPCDfile(const std::string finname, std::vector<tPoint> &points)
       fin.read(reinterpret_cast<char *>(&temY), sizeof(float));
       fin.read(reinterpret_cast<char *>(&temZ), sizeof(float));
       fin.read(reinterpret_cast<char *>(&temIntensity), sizeof(float));
-      p.poseX = static_cast<double>(temX);
-      p.poseY = static_cast<double>(temY);
-      p.poseZ = static_cast<double>(temZ);
+      p.poseX = static_cast<double>(temX) - odomPose.point.poseX;
+      p.poseY = static_cast<double>(temY) - odomPose.point.poseY;
+      p.poseZ = static_cast<double>(temZ) - odomPose.point.poseZ;
       p.intensity = static_cast<double>(temIntensity);
       points.push_back(p);
     }
@@ -266,7 +277,7 @@ Eigen::Quaterniond quaternionMultiply(const Eigen::Quaterniond &q1, const Eigen:
 
 void sendClouds()
 {
-  const std::string labelFileName = "/home/aiyang/SemanticKITTI/00/labels/004390.label";
+  const std::string labelFileName = "/home/aiyang/SemanticKITTI/00/labels/004392.label";
   std::vector<uint32_t> labels = readSemanticKittiLabel(labelFileName);
   if (labels.size() == pc.size())
   {
@@ -304,19 +315,19 @@ void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &gro
 
   // origin code mapToBaseTransform = mTfBuffer.lookupTransform("map", "base_link", cloud_msg->header.stamp, ros::Duration(0.0));
   // function find transformation paramters from base_link to map
-  mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX + odomPose.point.poseX;
-  mapToBaseTransform.point.poseY = odomPose.point.poseY + mapToBaseTransform.point.poseY;
-  mapToBaseTransform.point.poseZ = odomPose.point.poseZ + mapToBaseTransform.point.poseZ;
+  mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX - odomPose.point.poseX;
+  mapToBaseTransform.point.poseY = mapToBaseTransform.point.poseY - odomPose.point.poseY;
+  mapToBaseTransform.point.poseZ = mapToBaseTransform.point.poseZ - odomPose.point.poseZ;
 
   mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX + kitti_base_to_baseX;
   mapToBaseTransform.point.poseY = mapToBaseTransform.point.poseY + kitti_base_to_baseY;
   mapToBaseTransform.point.poseZ = mapToBaseTransform.point.poseZ + kitti_base_to_baseZ;
   // origin code cloudOriginTransform = mTfBuffer.lookupTransform("map", "velodyne", cloud_msg->header.stamp, ros::Duration(0.0));
   // function find transformation paramters from velodyne to map,
-  cloudOriginTransform.point.poseX = cloudOriginTransform.point.poseX + odomPose.point.poseX;
-  cloudOriginTransform.point.poseY = cloudOriginTransform.point.poseY + odomPose.point.poseY;
-  cloudOriginTransform.point.poseZ = cloudOriginTransform.point.poseZ + odomPose.point.poseZ;
-
+  cloudOriginTransform.point.poseX = cloudOriginTransform.point.poseX - odomPose.point.poseX;
+  cloudOriginTransform.point.poseY = cloudOriginTransform.point.poseY - odomPose.point.poseY;
+  cloudOriginTransform.point.poseZ = cloudOriginTransform.point.poseZ - odomPose.point.poseZ;
+ 
   tPoint origin;
 
   origin.poseX = 0.0;
@@ -338,9 +349,7 @@ void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &gro
 
   for (int indx = 0; indx < pc.size(); indx++)
   {
-    psIn.poseX = pc[indx].poseX;
-    psIn.poseY = pc[indx].poseY;
-    psIn.poseZ = pc[indx].poseZ;
+    psIn = pc[indx];
 
     // tf2::doTransform(psIn, psIn, transformStamped);
     psIn.poseX = psIn.poseX + transformStamped.point.poseX;
@@ -355,10 +364,27 @@ void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &gro
   origin_pclPoint.poseX = origin.poseX;
   origin_pclPoint.poseY = origin.poseY;
   origin_pclPoint.poseZ = origin.poseZ;
+  std::cout << "Odom: " << origin_pclPoint.poseX << ", " << origin_pclPoint.poseY << ", " << origin_pclPoint.poseZ << std::endl;
 
   std::vector<tPoint> filteredCloud = ground_segmentation_.filter_cloud(pc, origin_pclPoint, mapToBaseTransform, *map_ptr_);
-  std::cout<< filteredCloud.size() << std::endl;
-  for(int indx=0;indx<filteredCloud.size(); indx++){
-    std::cout<< filteredCloud[indx].intensity<<"  ";
+
+  // Write in txt file
+  std::ofstream file("segmentedPcd.txt");
+  // Check if the file opened successfully
+  if (!file.is_open())
+  {
+    std::cerr << "Failed to open the file for writing." << std::endl;
   }
+  file << std::fixed << std::setprecision(5);
+
+  for (const auto &point : filteredCloud)
+  {
+    file << point.poseX << "\t" << point.poseY << "\t" << point.poseZ << "\t" << point.intensity << "\n";
+  }
+  file.close();
+  std::cout << "Data written to file successfully.  " << filteredCloud.size() << std::endl;
+
+  // for(int i=0;i<filteredCloud.size();i++){
+  //   std::cout<< filteredCloud[i].intensity<< "  ";
+  // }
 }
