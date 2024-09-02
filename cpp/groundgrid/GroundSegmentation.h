@@ -22,7 +22,7 @@ extern int point_count_cell_variance_threshold;
 extern double occupied_cells_point_count_factor;
 extern double occupied_cells_decrease_factor;
 
-int maxInxrow = -999, maxInxcol =-999, minInxrow = 999, minInxcol = 999;
+int maxInxrow = -999, maxInxcol = -999, minInxrow = 999, minInxcol = 999;
 
 namespace groundgrid
 {
@@ -40,6 +40,7 @@ namespace groundgrid
         {
           const float &dist = std::hypot(i - cellCount / 2.0, j - cellCount / 2.0);
           expectedPoints(i, j) = std::atan(1 / dist) / verticalPointAngDist;
+          // TODO: expected point count equation is differentcompared with that in the paper
         }
       }
       Eigen::initParallel();
@@ -67,7 +68,6 @@ namespace groundgrid
       static const grid_map::Matrix &ggv = map["variance"];
       static grid_map::Matrix &gpl = map["points"];
       static grid_map::Matrix &ggl = map["ground"];
-      // std::cout<< ggl<< std::endl;
       const auto &size = map.getSize();
       const size_t threadcount = thread_count;
 
@@ -102,7 +102,25 @@ namespace groundgrid
       // wait for results
       std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
       // std::cout<<"Index: "<< minInxrow << "," << maxInxrow<< "   "<< minInxcol << ","<< maxInxcol<< std::endl;
+      std::ofstream file("maxHeight.txt");
+      // Check if the file opened successfully
+      if (!file.is_open())
+      {
+        std::cerr << "Failed to open the file for writing." << std::endl;
+      }
+      file << std::fixed << std::setprecision(5);
 
+      for (int r = 0; r < map["maxGroundHeight"].rows(); r++)
+      {
+        for (int c = 0; c < map["maxGroundHeight"].cols(); c++)
+        {
+          file << map["maxGroundHeight"](r, c) << "\t";
+        }
+        file << std::endl;
+      }
+      file.close();
+      std::cout << "Grid Map written to file successfully.  " << std::endl;
+      // std::cout<< "Lidar: " << map["maxGroundHeight"](182,182) << ",  " << map["points"](182,182) << std::endl;
       // join results
       for (const auto &point_index_part : point_index_list)
         point_index.insert(point_index.end(), point_index_part.begin(), point_index_part.end());
@@ -111,7 +129,6 @@ namespace groundgrid
       for (const auto &ignored_part : ignored_list)
         ignored.insert(ignored.end(), ignored_part.begin(), ignored_part.end());
 
-      
       // Divide the grid map into four section for threaded calculations
       threads.clear();
       for (unsigned short section = 0; section < 4; ++section)
@@ -119,7 +136,7 @@ namespace groundgrid
 
       // wait for results
       std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
-      
+
       spiral_ground_interpolation(map, mapToBase);
       map["points"].setConstant(0.0);
 
@@ -130,7 +147,7 @@ namespace groundgrid
       const double &min_dist_fac = minimum_distance_factor * 5;
       const double &min_point_height_thres = miminum_point_height_threshold;
       const double &min_point_height_obs_thres = minimum_point_height_obstacle_threshold;
-      // std::cout<< ggv<< std::endl; 
+      // std::cout<< ggv<< std::endl;
 
       for (const std::pair<size_t, grid_map::Index> &entry : point_index)
       {
@@ -138,7 +155,7 @@ namespace groundgrid
         const grid_map::Index &gi = entry.second;
         const double &groundheight = ggl(gi(0), gi(1));
 
-        const bool ground_point = point.ring == 40 || point.ring == 44 || point.ring == 48 || point.ring == 49 || point.ring == 60 || point.ring == 72;
+        // const bool ground_point = point.ring == 40 || point.ring == 44 || point.ring == 48 || point.ring == 49 || point.ring == 60 || point.ring == 72;
         // copy the points intensity because it get's overwritten for evaluation purposes
         const float &variance = ggv(gi(0), gi(1));
 
@@ -147,11 +164,11 @@ namespace groundgrid
 
         const float dist = std::hypot(point.poseX - cloudOrigin.poseX, point.poseY - cloudOrigin.poseY);
         const double tolerance = std::max(std::min((min_dist_fac * dist) / variance * min_point_height_thres, min_point_height_thres), min_point_height_obs_thres);
-        
 
+        // std::cout<< tolerance << "," << groundheight << "," << point.poseZ << std::endl;
         if (tolerance + groundheight < point.poseZ)
         { // non-ground points
-        // std::cout<<groundheight<<","<< point.poseZ<< "   ";
+          // std::cout<<groundheight<<","<< point.poseZ<< "   ";
           filtered_cloud.push_back(point);
           filtered_cloud.back().intensity = 99;
           gpl(gi(0), gi(1)) += 1.0f;
@@ -167,7 +184,7 @@ namespace groundgrid
       for (size_t i : outliers)
       {
         const tPoint &point = cloud[i];
-        const bool ground_point = point.ring == 40 || point.ring == 44 || point.ring == 48 || point.ring == 49 || point.ring == 60 || point.ring == 72;
+        // const bool ground_point = point.ring == 40 || point.ring == 44 || point.ring == 48 || point.ring == 49 || point.ring == 60 || point.ring == 72;
         filtered_cloud.push_back(point); // ground point
         filtered_cloud.back().intensity = 49;
       }
@@ -190,13 +207,11 @@ namespace groundgrid
       static grid_map::Matrix &gm2 = map["m2"];
 
       const auto &size = map.getSize();
-
       point_index.reserve(end - start);
       // std::cout<< start << "," << end<< std::endl;
-      std::cout<< "Ind:" <<cloudOrigin.poseX <<","<< cloudOrigin.poseY<< std::endl;
+      // std::cout<< "Ind:" <<cloudOrigin.poseX <<","<< cloudOrigin.poseY<< std::endl;
       grid_map::Index orgInd;
-      map.getIndex(grid_map::Position(cloudOrigin.poseX, cloudOrigin.poseY),orgInd);
-      std::cout<< "origin: " << orgInd(0)<<","<<orgInd(1)<<std::endl;
+      map.getIndex(grid_map::Position(cloudOrigin.poseX, cloudOrigin.poseY), orgInd);
 
       for (size_t i = start; i < end; ++i)
       {
@@ -210,20 +225,25 @@ namespace groundgrid
 
         grid_map::Index gi;
         map.getIndex(pos, gi);
-        if(gi(0)<minInxrow){
-          minInxrow=gi(0);
+        if (gi(0) < minInxrow)
+        {
+          minInxrow = gi(0);
         }
-        if(gi(1)<minInxcol){
+        if (gi(1) < minInxcol)
+        {
           minInxcol = gi(1);
         }
-        if(gi(0)>maxInxrow){
-          maxInxrow=gi(0);
+        if (gi(0) > maxInxrow)
+        {
+          maxInxrow = gi(0);
         }
-        if(gi(1)>maxInxcol){
+        if (gi(1) > maxInxcol)
+        {
           maxInxcol = gi(1);
         }
-        
-        if (!map.isInside(pos)){
+
+        if (!map.isInside(pos))
+        {
           // std::cout<< pos(0)<<","<< pos(1)<<std::endl;
           continue;
         }
@@ -233,7 +253,8 @@ namespace groundgrid
         gpr(gi(0), gi(1)) += 1.0f;
         // std::cout<< point.ring<< std::endl;
 
-        if (point.ring > max_ring || sqdist < minDistSquared)
+        // if (point.ring > max_ring || sqdist < minDistSquared)
+        if (sqdist < minDistSquared)
         {
           // std::cout<< point.poseX << ","<< point.poseY << std::endl;
           ignored.push_back(std::make_pair(i, gi));
@@ -242,7 +263,7 @@ namespace groundgrid
 
         // Outlier detection test
         const float oldgroundheight = ggl(gi(0), gi(1));
-        // std::cout<< oldgroundheight << ", " ;
+        // std::cout<< oldgroundheight << ", " <<point.poseZ<< std::endl;
         if (point.poseZ < oldgroundheight - 0.2)
         {
 
@@ -281,7 +302,7 @@ namespace groundgrid
 
         if (toSkip)
           continue;
-
+        // std::cout<< gi(0) <<","<< gi(1)<< std::endl;
         float &groundheight = gmg(gi(0), gi(1));
         float &mean = gmm(gi(0), gi(1));
 
@@ -296,9 +317,11 @@ namespace groundgrid
 
         planeDist = point.poseZ - cloudOrigin.poseZ;
         groundheight = (point.poseZ + points * groundheight) / (points + 1.0);
-
+        // std::cout<< groundheight << " points:" << points <<std::endl;
+        // std::cout<<mean<<",";
         if (mean == 0.0)
           mean = planeDist;
+        // std::cout<<mean<<std:endl;
         if (!std::isnan(planeDist))
         {
           float delta = planeDist - mean;
@@ -306,7 +329,7 @@ namespace groundgrid
           planeDistMap = (planeDist + points * planeDistMap) / (points + 1.0);
           m2 += delta * (planeDist - mean);
         }
-
+        // std::cout<< mean <<'\t';
         maxHeight = std::max(maxHeight, static_cast<float>(point.poseZ));
         minHeight = std::min(minHeight, static_cast<float>(point.poseZ) - 0.0001f); // to make sure maxHeight > minHeight
         points += 1.0;
@@ -324,8 +347,13 @@ namespace groundgrid
       // calculate variance
       // std::cout<< gpl << std::endl;
       ggv = gm2.array().cwiseQuotient(gpl.array() + std::numeric_limits<float>::min());
-      
 
+      // for(int r=80;r<100;r++){
+      //   for(int c=280;c<300;c++){
+      //     std::cout<< ggv(r,c)<< "  ";
+      //   }
+      //   std::cout<< std::endl;
+      // }
       int cols_start = 2 + section % 2 * (gcl.cols() / 2 - 2);
       int rows_start = section >= 2 ? gcl.rows() / 2 : 2;
       int cols_end = (gcl.cols()) / 2 + section % 2 * (gcl.cols() / 2 - 2);
@@ -376,6 +404,7 @@ namespace groundgrid
       const auto &minblock = gmi.block<S, S>(i - center_idx, j - center_idx);
       const float &variance = varblock(center_idx, center_idx);
       const float &localmin = minblock.minCoeff();
+      std::cout<< "Point Count: " << pointsBlock(center_idx, center_idx) << std::endl;
       const float maxVar = pointsBlock(center_idx, center_idx) >= point_count_cell_variance_threshold ? variance : pointsBlock.array().cwiseProduct(varblock.array()).sum() / pointsblockSum;
       const float groundlevel = pointsBlock.cwiseProduct(minblock).sum() / pointsblockSum;
       const float groundDiff = std::max((groundlevel - oldGroundheight) * (2.0f * oldConfidence), 1.0f);
@@ -407,15 +436,15 @@ namespace groundgrid
       static grid_map::Matrix &gvl = map["groundpatch"];
       const auto &map_size = map.getSize();
       const auto &center_idx = map_size(0) / 2 - 1;
-      std::cout<< center_idx << std::endl;
+      // std::cout << "central: " << center_idx << std::endl;
       gvl(center_idx, center_idx) = 1.0f;
       tPoint ps;
       // tf2::doTransform(ps, ps, toBase);
-      // std::cout<< ps.poseX << "," << ps.poseY << ","<< ps.poseZ<<std::endl;
+      std::cout<< "Before:"<< ps.poseX << "," << ps.poseY << ","<< ps.poseZ<<std::endl;
       ps.poseX = ps.poseX + toBase.point.poseX;
       ps.poseY = ps.poseY + toBase.point.poseY;
       ps.poseZ = ps.poseZ + toBase.point.poseZ;
-      // std::cout<< ps.poseX << "," << ps.poseY << ","<< ps.poseZ<<std::endl;
+      std::cout<< "After:"<< ps.poseX << "," << ps.poseY << ","<< ps.poseZ<<std::endl;
       // Set center to current vehicle height
       ggl(center_idx, center_idx) = ps.poseZ;
 

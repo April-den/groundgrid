@@ -22,7 +22,7 @@ Eigen::Quaterniond quaternionFromMatrix(const Eigen::Matrix4d &matrix);
 Eigen::Quaterniond quaternionFromeuler(double yaw, double pitch, double row);
 Eigen::Vector3d eulerFromQuaternion(const Eigen::Quaterniond &q);
 Eigen::Quaterniond quaternionMultiply(const Eigen::Quaterniond &q1, const Eigen::Quaterniond &q2);
-void sendClouds();
+void sendClouds(const std::string labelFileName);
 void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &ground_segmentation_);
 void odom_callback(tPose inOdom);
 // void publish_grid_map_layer(const std::string &layer_name, const int seq = 0);
@@ -42,18 +42,27 @@ int main()
   ground_segmentation_.init(groundgrid_->mDimension, groundgrid_->mResolution);
   odom_callback(odomPose);
   points_callback(pc, ground_segmentation_);
-
+  // const std::string pcdFile1 = "/home/aiyang/00/pcd/004393.pcd";
+  // const std::string labelFileName1 = "/home/aiyang/SemanticKITTI/00/labels/004393.label";
+  // pc.clear();
+  // odomPose.reset();
+  // readPCDfile(pcdFile1, pc);
+  // sendClouds(labelFileName1);
+  // odom_callback(odomPose);
+  // points_callback(pc, ground_segmentation_);
 }
 
 void Init()
 {
   const std::string pcFileName = "/home/aiyang/SemanticKITTI/00/velodyne/000020.bin";
   const std::string poseFileName = "/home/aiyang/SemanticKITTI/00/poses.txt";
-  const std::string pcdFile = "/home/aiyang/00/pcd/004392.pcd";
+  // const std::string pcdFile = "/home/aiyang/00/pcd/004392.pcd";
+  const std::string pcdFile = "kitti0.pcd";
+  const std::string labelFileName = "/home/aiyang/SemanticKITTI/00/labels/004392.label";
   // readSemanticKittiPc(pcFileName);
   readPCDfile(pcdFile, pc);
   // sendPosition();
-  sendClouds();
+
 }
 
 void readPCDfile(const std::string finname, std::vector<tPoint> &points)
@@ -116,7 +125,7 @@ void readPCDfile(const std::string finname, std::vector<tPoint> &points)
   tPoint p;
   std::cout << "data_columns_type: " << data_columns_type << std::endl;
   std::cout << "data_type: " << data_type << std::endl;
-  if ((data_columns_type == "x y z intensity") && (data_type == "binary"))
+  if ((data_columns_type == "x y z") && (data_type == "binary"))
   {
     std::cout << "start to read point ....." << std::endl;
     while (fin.peek() != EOF)
@@ -125,14 +134,15 @@ void readPCDfile(const std::string finname, std::vector<tPoint> &points)
       fin.read(reinterpret_cast<char *>(&temX), sizeof(float));
       fin.read(reinterpret_cast<char *>(&temY), sizeof(float));
       fin.read(reinterpret_cast<char *>(&temZ), sizeof(float));
-      fin.read(reinterpret_cast<char *>(&temIntensity), sizeof(float));
+      // fin.read(reinterpret_cast<char *>(&temIntensity), sizeof(float));
       p.poseX = static_cast<double>(temX) - odomPose.point.poseX;
       p.poseY = static_cast<double>(temY) - odomPose.point.poseY;
       p.poseZ = static_cast<double>(temZ) - odomPose.point.poseZ;
-      p.intensity = static_cast<double>(temIntensity);
+      // p.intensity = static_cast<double>(temIntensity);
       points.push_back(p);
     }
   }
+  fin.close();
 }
 
 void readSemanticKittiPc(const std::string &filename)
@@ -275,9 +285,9 @@ Eigen::Quaterniond quaternionMultiply(const Eigen::Quaterniond &q1, const Eigen:
   return q1 * q2;
 }
 
-void sendClouds()
+void sendClouds(const std::string labelFileName)
 {
-  const std::string labelFileName = "/home/aiyang/SemanticKITTI/00/labels/004392.label";
+  
   std::vector<uint32_t> labels = readSemanticKittiLabel(labelFileName);
   if (labels.size() == pc.size())
   {
@@ -315,18 +325,18 @@ void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &gro
 
   // origin code mapToBaseTransform = mTfBuffer.lookupTransform("map", "base_link", cloud_msg->header.stamp, ros::Duration(0.0));
   // function find transformation paramters from base_link to map
-  mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX - odomPose.point.poseX;
-  mapToBaseTransform.point.poseY = mapToBaseTransform.point.poseY - odomPose.point.poseY;
-  mapToBaseTransform.point.poseZ = mapToBaseTransform.point.poseZ - odomPose.point.poseZ;
+  mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX + odomPose.point.poseX;
+  mapToBaseTransform.point.poseY = mapToBaseTransform.point.poseY + odomPose.point.poseY;
+  mapToBaseTransform.point.poseZ = mapToBaseTransform.point.poseZ + odomPose.point.poseZ;
 
-  mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX + kitti_base_to_baseX;
-  mapToBaseTransform.point.poseY = mapToBaseTransform.point.poseY + kitti_base_to_baseY;
-  mapToBaseTransform.point.poseZ = mapToBaseTransform.point.poseZ + kitti_base_to_baseZ;
+  mapToBaseTransform.point.poseX = mapToBaseTransform.point.poseX - kitti_base_to_baseX;
+  mapToBaseTransform.point.poseY = mapToBaseTransform.point.poseY - kitti_base_to_baseY;
+  mapToBaseTransform.point.poseZ = mapToBaseTransform.point.poseZ - kitti_base_to_baseZ;
   // origin code cloudOriginTransform = mTfBuffer.lookupTransform("map", "velodyne", cloud_msg->header.stamp, ros::Duration(0.0));
   // function find transformation paramters from velodyne to map,
-  cloudOriginTransform.point.poseX = cloudOriginTransform.point.poseX - odomPose.point.poseX;
-  cloudOriginTransform.point.poseY = cloudOriginTransform.point.poseY - odomPose.point.poseY;
-  cloudOriginTransform.point.poseZ = cloudOriginTransform.point.poseZ - odomPose.point.poseZ;
+  cloudOriginTransform.point.poseX = cloudOriginTransform.point.poseX + odomPose.point.poseX;
+  cloudOriginTransform.point.poseY = cloudOriginTransform.point.poseY + odomPose.point.poseY;
+  cloudOriginTransform.point.poseZ = cloudOriginTransform.point.poseZ + odomPose.point.poseZ;
  
   tPoint origin;
 
@@ -349,21 +359,29 @@ void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &gro
 
   for (int indx = 0; indx < pc.size(); indx++)
   {
+
+    if(indx == 10){
+      std::cout<< "Point 10: " << indx<<"  "<< pc[indx].poseX<< ","<< pc[indx].poseY << "," << pc[indx].poseZ << std::endl;
+    }
     psIn = pc[indx];
 
     // tf2::doTransform(psIn, psIn, transformStamped);
     psIn.poseX = psIn.poseX + transformStamped.point.poseX;
     psIn.poseY = psIn.poseY + transformStamped.point.poseY;
     psIn.poseZ = psIn.poseZ + transformStamped.point.poseZ;
+    if(indx == 10){
+      std::cout<< "Point 10: "<< indx<<"  " << psIn.poseX<< ","<< psIn.poseY << "," << psIn.poseZ << std::endl;
+    }
 
     transformed_cloud.push_back(psIn);
     pc[indx] = transformed_cloud[indx];
+    if(indx == 10){
+      std::cout<< "Point 10: "<< indx<<"  " << pc[indx].poseX << ","<< pc[indx].poseY << "," << pc[indx].poseZ << std::endl;
+    }
   }
 
   tPoint origin_pclPoint;
-  origin_pclPoint.poseX = origin.poseX;
-  origin_pclPoint.poseY = origin.poseY;
-  origin_pclPoint.poseZ = origin.poseZ;
+  origin_pclPoint = origin;
   std::cout << "Odom: " << origin_pclPoint.poseX << ", " << origin_pclPoint.poseY << ", " << origin_pclPoint.poseZ << std::endl;
 
   std::vector<tPoint> filteredCloud = ground_segmentation_.filter_cloud(pc, origin_pclPoint, mapToBaseTransform, *map_ptr_);

@@ -52,6 +52,12 @@ public:
         frame_id = other.frame_id;
         return *this;
     }
+    void reset(){
+        poseX = 0.0;
+        poseY = 0.0;
+        poseZ = 0.0;
+        ring = 0.0;
+    }
 };
 
 class tPose
@@ -60,7 +66,7 @@ public:
     tPoint point;
     double orientationX, orientationY, orientationZ, orientationW;
     std::string frame_id;
-    tPose() {point.poseX=0.0;point.poseY=0.0;point.poseZ=0.0;};
+    tPose() {point.poseX=0.0;point.poseY=0.0;point.poseZ=0.0;orientationX=0.0;orientationY=0.0;orientationZ=0.0;orientationW=0.0;};
     virtual ~tPose() {};
     tPose &operator=(const tPose &other)
     {
@@ -73,6 +79,13 @@ public:
         orientationW = other.orientationW;
         frame_id = other.frame_id;
         return *this;
+    }
+    void reset(){
+        point.reset();
+        orientationX = 0.0;
+        orientationY = 0.0;
+        orientationZ = 0.0;
+        orientationW = 0.0;
     }
 };
 
@@ -99,11 +112,15 @@ public:
         grid_map::GridMap &map = *mMap_ptr;
         map.setFrameId("map");
         map.setGeometry(grid_map::Length(mDimension, mDimension), mResolution, grid_map::Position(inOdom.point.poseX, inOdom.point.poseY));
-        
+        std::cout<<"Length: "<< map.getLength()<< "Resolution"<< map.getResolution()<< std::endl;
         std::cout<< "siz " <<map.getSize()(0)<< "," << map.getSize()(1)<<std::endl;
+        std::cout<< "inOdom: " << inOdom.point.poseX <<","<< inOdom.point.poseY<<std::endl;
         odomPose = inOdom;
         std::vector<grid_map::BufferRegion> damage;
         map.move(grid_map::Position(odomPose.point.poseX, odomPose.point.poseY), damage);
+        grid_map::Index gi;
+        map.getIndex(grid_map::Position(odomPose.point.poseX, odomPose.point.poseY), gi);
+        std::cout<< "Index orig - 60: " << gi << std::endl;
         map["points"].setZero();
         map["ground"].setConstant(inOdom.point.poseZ);
         map["groundpatch"].setConstant(0.0000001);
@@ -126,7 +143,6 @@ public:
         poseDiff.point.poseY = inOdom.point.poseY - mLastPose.point.poseY;
         std::vector<grid_map::BufferRegion> damage;
         map.move(grid_map::Position(inOdom.point.poseX, inOdom.point.poseY), damage);
-
         tPoint ps;
       
         grid_map::Position pos;
@@ -138,24 +154,25 @@ public:
                 auto idx = *it;
 
                 map.getPosition(idx, pos);
+                // std::cout<<pos(0)<<","<< pos(1)<<std::endl;
                 ps.poseX = pos(0);
                 ps.poseY = pos(1);
                 ps.poseZ = 0;
                 simpleTranslation(ps,inOdom);
+                // std::cout<<idx(0)<<","<<idx(1)<<std::endl;
                 map.at("ground", idx) = -ps.poseZ;
                 map.at("groundpatch", idx) = 0.0;
             }
         }
-
+        std::cout<<"End iterator"<<std::endl;
         // We havent moved so we have nothing to do
         if (damage.empty())
             return mMap_ptr;
 
         mLastPose.point= inOdom.point;
         mLastPose.frame_id = inOdom.frame_id;
-
         map.convertToDefaultStartIndex();
-
+        std::cout<<"Update End" << std::endl;
         return mMap_ptr;
     };
     //Ignore rotation, only consider translation

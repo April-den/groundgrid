@@ -3,7 +3,7 @@ set(CTEST_SOURCE_DIRECTORY  "/home/aiyang/groundgrid")
 set(CTEST_BINARY_DIRECTORY  "/home/aiyang/groundgrid/build")
 set(CTEST_CMAKE_GENERATOR   "Unix Makefiles")
 set(CTEST_BUILD_NAME        "")
-set(CTEST_SITE              "aiyang")
+set(CTEST_SITE              "")
 
 set(MODEL Experimental)
 if(${CTEST_SCRIPT_ARG} MATCHES Nightly)
