@@ -118,6 +118,7 @@ public:
         odomPose = inOdom;
         std::vector<grid_map::BufferRegion> damage;
         map.move(grid_map::Position(odomPose.point.poseX, odomPose.point.poseY), damage);
+        std::cout << map.isDefaultStartIndex() << "\n" << map.isDefaultStartIndex() << std::endl;
         grid_map::Index gi;
         map.getIndex(grid_map::Position(odomPose.point.poseX, odomPose.point.poseY), gi);
         std::cout<< "Index orig - 60: " << gi << std::endl;
@@ -142,7 +143,7 @@ public:
         poseDiff.point.poseX = inOdom.point.poseX - mLastPose.point.poseX;
         poseDiff.point.poseY = inOdom.point.poseY - mLastPose.point.poseY;
         std::vector<grid_map::BufferRegion> damage;
-        map.move(grid_map::Position(inOdom.point.poseX, inOdom.point.poseY), damage);
+        // map.move(grid_map::Position(inOdom.point.poseX, inOdom.point.poseY), damage);
         tPoint ps;
       
         grid_map::Position pos;

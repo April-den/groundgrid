@@ -808,6 +808,7 @@ namespace grid_map
 
         bool isDefaultStartIndex() const
         {
+            std::cout<< "StartIndex: " << startIndex_ << std::endl;
             return (startIndex_ == 0).all();
         }
 

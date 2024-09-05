@@ -404,7 +404,6 @@ namespace groundgrid
       const auto &minblock = gmi.block<S, S>(i - center_idx, j - center_idx);
       const float &variance = varblock(center_idx, center_idx);
       const float &localmin = minblock.minCoeff();
-      std::cout<< "Point Count: " << pointsBlock(center_idx, center_idx) << std::endl;
       const float maxVar = pointsBlock(center_idx, center_idx) >= point_count_cell_variance_threshold ? variance : pointsBlock.array().cwiseProduct(varblock.array()).sum() / pointsblockSum;
       const float groundlevel = pointsBlock.cwiseProduct(minblock).sum() / pointsblockSum;
       const float groundDiff = std::max((groundlevel - oldGroundheight) * (2.0f * oldConfidence), 1.0f);

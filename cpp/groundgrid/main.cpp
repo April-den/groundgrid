@@ -42,27 +42,18 @@ int main()
   ground_segmentation_.init(groundgrid_->mDimension, groundgrid_->mResolution);
   odom_callback(odomPose);
   points_callback(pc, ground_segmentation_);
-  // const std::string pcdFile1 = "/home/aiyang/00/pcd/004393.pcd";
-  // const std::string labelFileName1 = "/home/aiyang/SemanticKITTI/00/labels/004393.label";
-  // pc.clear();
-  // odomPose.reset();
-  // readPCDfile(pcdFile1, pc);
-  // sendClouds(labelFileName1);
-  // odom_callback(odomPose);
-  // points_callback(pc, ground_segmentation_);
+  const std::string pcdFile1 = "/home/aiyang/00/pcd/004393.pcd";
+  pc.clear();
+  odomPose.reset();
+  readPCDfile(pcdFile1, pc);
+  odom_callback(odomPose);
+  points_callback(pc, ground_segmentation_);
 }
 
 void Init()
-{
-  const std::string pcFileName = "/home/aiyang/SemanticKITTI/00/velodyne/000020.bin";
-  const std::string poseFileName = "/home/aiyang/SemanticKITTI/00/poses.txt";
-  // const std::string pcdFile = "/home/aiyang/00/pcd/004392.pcd";
-  const std::string pcdFile = "kitti0.pcd";
-  const std::string labelFileName = "/home/aiyang/SemanticKITTI/00/labels/004392.label";
-  // readSemanticKittiPc(pcFileName);
+{ 
+  const std::string pcdFile = "/home/aiyang/00/pcd/004392.pcd";
   readPCDfile(pcdFile, pc);
-  // sendPosition();
-
 }
 
 void readPCDfile(const std::string finname, std::vector<tPoint> &points)
@@ -125,7 +116,25 @@ void readPCDfile(const std::string finname, std::vector<tPoint> &points)
   tPoint p;
   std::cout << "data_columns_type: " << data_columns_type << std::endl;
   std::cout << "data_type: " << data_type << std::endl;
-  if ((data_columns_type == "x y z") && (data_type == "binary"))
+  if ((data_columns_type == "x y z intensity") && (data_type == "binary"))
+  {
+    std::cout << "start to read point ....." << std::endl;
+    while (fin.peek() != EOF)
+    {
+      float temX, temY, temZ, temIntensity;
+      fin.read(reinterpret_cast<char *>(&temX), sizeof(float));
+      fin.read(reinterpret_cast<char *>(&temY), sizeof(float));
+      fin.read(reinterpret_cast<char *>(&temZ), sizeof(float));
+      fin.read(reinterpret_cast<char *>(&temIntensity), sizeof(float));
+      p.poseX = static_cast<double>(temX) - odomPose.point.poseX;
+      p.poseY = static_cast<double>(temY) - odomPose.point.poseY;
+      p.poseZ = static_cast<double>(temZ) - odomPose.point.poseZ;
+      p.intensity = static_cast<double>(temIntensity);
+      points.push_back(p);
+    }
+  }
+
+  if ((data_columns_type == "x y z ") && (data_type == "binary"))
   {
     std::cout << "start to read point ....." << std::endl;
     while (fin.peek() != EOF)
