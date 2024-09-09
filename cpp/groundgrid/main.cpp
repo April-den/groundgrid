@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <Eigen/Dense>
+#include <dirent.h>
 #include <Eigen/LU>
 #include "GridMap.h"
 #include "GroundGrid.h"
@@ -12,7 +13,6 @@
 
 using GroundGridPtr = std::shared_ptr<GroundGrid>;
 
-void Init();
 void readPCDfile(const std::string finname, std::vector<tPoint> &points);
 void readSemanticKittiPc(const std::string &filename);
 std::vector<uint32_t> readSemanticKittiLabel(const std::string &filename);
@@ -23,7 +23,7 @@ Eigen::Quaterniond quaternionFromeuler(double yaw, double pitch, double row);
 Eigen::Vector3d eulerFromQuaternion(const Eigen::Quaterniond &q);
 Eigen::Quaterniond quaternionMultiply(const Eigen::Quaterniond &q1, const Eigen::Quaterniond &q2);
 void sendClouds(const std::string labelFileName);
-void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &ground_segmentation_);
+void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &ground_segmentation_, const std::string segmentFileName);
 void odom_callback(tPose inOdom);
 // void publish_grid_map_layer(const std::string &layer_name, const int seq = 0);
 
@@ -36,24 +36,77 @@ GroundGridPtr groundgrid_;
 
 int main()
 {
-  Init();
   groundgrid_ = std::make_shared<GroundGrid>();
   groundgrid::GroundSegmentation ground_segmentation_;
   ground_segmentation_.init(groundgrid_->mDimension, groundgrid_->mResolution);
-  odom_callback(odomPose);
-  points_callback(pc, ground_segmentation_);
-  const std::string pcdFile1 = "/home/aiyang/00/pcd/004393.pcd";
-  pc.clear();
-  odomPose.reset();
-  readPCDfile(pcdFile1, pc);
-  odom_callback(odomPose);
-  points_callback(pc, ground_segmentation_);
-}
 
-void Init()
-{ 
-  const std::string pcdFile = "/home/aiyang/00/pcd/004392.pcd";
-  readPCDfile(pcdFile, pc);
+  std::string folderPath = "/home/aiyang/00/pcd";
+  DIR *dir = opendir(folderPath.c_str());
+  struct dirent *entry;
+  std::vector<std::string> pcdFiles;
+  int filesRead = 0;
+  int maxFiles = 10;
+
+  if (dir == nullptr)
+  {
+    std::cerr << "Could not open directory: " << folderPath << std::endl;
+    return 1;
+  }
+  while ((entry = readdir(dir)) != nullptr)
+  {
+    std::string fileName = entry->d_name;
+
+    // Skip "." and ".." entries
+    if (fileName == "." || fileName == "..")
+    {
+      continue;
+    }
+
+    // Check if the file has the ".pcd" extension
+
+    if (fileName.size() >= 4 && fileName.substr(fileName.size() - 4) == ".pcd")
+    {
+      pcdFiles.push_back(folderPath + "/" + fileName);
+    }
+  }
+  closedir(dir);
+  std::sort(pcdFiles.begin(), pcdFiles.end());
+
+  for (const auto &filePath : pcdFiles)
+  {
+    if (filesRead < maxFiles)
+    {
+      std::cout << filePath << std::endl;
+      size_t lastSlashPos = filePath.find_last_of("/");
+      std::string fileName = filePath.substr(lastSlashPos + 1);
+      size_t dotPos = fileName.find_last_of(".");
+      std::string numberString = fileName.substr(0, dotPos);
+      std::cout << numberString << std::endl;
+      // Call the PCD reading function
+      readPCDfile(filePath, pc);
+      odom_callback(odomPose);
+      points_callback(pc, ground_segmentation_, numberString);
+      pc.clear();
+      odomPose.reset();
+      filesRead++;
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  // const std::string pcdFile = "/home/aiyang/00/pcd/004392.pcd";
+  // readPCDfile(pcdFile, pc);
+  // odom_callback(odomPose);
+  // points_callback(pc, ground_segmentation_);
+  // pc.clear();
+  // odomPose.reset();
+  // const std::string pcdFile1 = "/home/aiyang/00/pcd/004393.pcd";
+
+  // readPCDfile(pcdFile1, pc);
+  // odom_callback(odomPose);
+  // points_callback(pc, ground_segmentation_);
 }
 
 void readPCDfile(const std::string finname, std::vector<tPoint> &points)
@@ -72,7 +125,6 @@ void readPCDfile(const std::string finname, std::vector<tPoint> &points)
   for (int i = 0; i < 11; ++i)
   {
     fin.getline(s[i], 1024);
-    std::cout << s[i] << std::endl;
 
     // FIELDS x y z rgb
     if (i == 2)
@@ -111,11 +163,8 @@ void readPCDfile(const std::string finname, std::vector<tPoint> &points)
       data_type = s10.substr(pos + 5, size);
     }
   }
-  std::cout << "pc size: " << pc.size() << std::endl;
 
   tPoint p;
-  std::cout << "data_columns_type: " << data_columns_type << std::endl;
-  std::cout << "data_type: " << data_type << std::endl;
   if ((data_columns_type == "x y z intensity") && (data_type == "binary"))
   {
     std::cout << "start to read point ....." << std::endl;
@@ -133,8 +182,7 @@ void readPCDfile(const std::string finname, std::vector<tPoint> &points)
       points.push_back(p);
     }
   }
-
-  if ((data_columns_type == "x y z ") && (data_type == "binary"))
+  else if ((data_columns_type == "x y z ") && (data_type == "binary"))
   {
     std::cout << "start to read point ....." << std::endl;
     while (fin.peek() != EOF)
@@ -150,6 +198,10 @@ void readPCDfile(const std::string finname, std::vector<tPoint> &points)
       // p.intensity = static_cast<double>(temIntensity);
       points.push_back(p);
     }
+  }
+  else
+  {
+    std::cout << "Point cloud format is not compatible" << std::endl;
   }
   fin.close();
 }
@@ -296,7 +348,7 @@ Eigen::Quaterniond quaternionMultiply(const Eigen::Quaterniond &q1, const Eigen:
 
 void sendClouds(const std::string labelFileName)
 {
-  
+
   std::vector<uint32_t> labels = readSemanticKittiLabel(labelFileName);
   if (labels.size() == pc.size())
   {
@@ -322,9 +374,8 @@ void odom_callback(tPose inOdom)
   }
 }
 
-void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &ground_segmentation_)
+void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &ground_segmentation_, const std::string segmentFileName)
 {
-
   static size_t time_vals = 0;
   tPose mapToBaseTransform, cloudOriginTransform;
 
@@ -346,7 +397,7 @@ void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &gro
   cloudOriginTransform.point.poseX = cloudOriginTransform.point.poseX + odomPose.point.poseX;
   cloudOriginTransform.point.poseY = cloudOriginTransform.point.poseY + odomPose.point.poseY;
   cloudOriginTransform.point.poseZ = cloudOriginTransform.point.poseZ + odomPose.point.poseZ;
- 
+
   tPoint origin;
 
   origin.poseX = 0.0;
@@ -368,25 +419,15 @@ void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &gro
 
   for (int indx = 0; indx < pc.size(); indx++)
   {
-
-    if(indx == 10){
-      std::cout<< "Point 10: " << indx<<"  "<< pc[indx].poseX<< ","<< pc[indx].poseY << "," << pc[indx].poseZ << std::endl;
-    }
     psIn = pc[indx];
 
     // tf2::doTransform(psIn, psIn, transformStamped);
     psIn.poseX = psIn.poseX + transformStamped.point.poseX;
     psIn.poseY = psIn.poseY + transformStamped.point.poseY;
     psIn.poseZ = psIn.poseZ + transformStamped.point.poseZ;
-    if(indx == 10){
-      std::cout<< "Point 10: "<< indx<<"  " << psIn.poseX<< ","<< psIn.poseY << "," << psIn.poseZ << std::endl;
-    }
 
     transformed_cloud.push_back(psIn);
     pc[indx] = transformed_cloud[indx];
-    if(indx == 10){
-      std::cout<< "Point 10: "<< indx<<"  " << pc[indx].poseX << ","<< pc[indx].poseY << "," << pc[indx].poseZ << std::endl;
-    }
   }
 
   tPoint origin_pclPoint;
@@ -396,7 +437,8 @@ void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &gro
   std::vector<tPoint> filteredCloud = ground_segmentation_.filter_cloud(pc, origin_pclPoint, mapToBaseTransform, *map_ptr_);
 
   // Write in txt file
-  std::ofstream file("segmentedPcd.txt");
+  std::string segmFiName = segmentFileName +".txt";
+  std::ofstream file(segmFiName);
   // Check if the file opened successfully
   if (!file.is_open())
   {
@@ -410,8 +452,4 @@ void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &gro
   }
   file.close();
   std::cout << "Data written to file successfully.  " << filteredCloud.size() << std::endl;
-
-  // for(int i=0;i<filteredCloud.size();i++){
-  //   std::cout<< filteredCloud[i].intensity<< "  ";
-  // }
 }

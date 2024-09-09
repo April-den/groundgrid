@@ -112,16 +112,16 @@ public:
         grid_map::GridMap &map = *mMap_ptr;
         map.setFrameId("map");
         map.setGeometry(grid_map::Length(mDimension, mDimension), mResolution, grid_map::Position(inOdom.point.poseX, inOdom.point.poseY));
-        std::cout<<"Length: "<< map.getLength()<< "Resolution"<< map.getResolution()<< std::endl;
-        std::cout<< "siz " <<map.getSize()(0)<< "," << map.getSize()(1)<<std::endl;
-        std::cout<< "inOdom: " << inOdom.point.poseX <<","<< inOdom.point.poseY<<std::endl;
+        // std::cout<<"Length: "<< map.getLength()<< "Resolution"<< map.getResolution()<< std::endl;
+        // std::cout<< "siz " <<map.getSize()(0)<< "," << map.getSize()(1)<<std::endl;
+        // std::cout<< "inOdom: " << inOdom.point.poseX <<","<< inOdom.point.poseY<<std::endl;
         odomPose = inOdom;
         std::vector<grid_map::BufferRegion> damage;
         map.move(grid_map::Position(odomPose.point.poseX, odomPose.point.poseY), damage);
-        std::cout << map.isDefaultStartIndex() << "\n" << map.isDefaultStartIndex() << std::endl;
+        // std::cout << map.isDefaultStartIndex() << "\n" << map.isDefaultStartIndex() << std::endl;
         grid_map::Index gi;
         map.getIndex(grid_map::Position(odomPose.point.poseX, odomPose.point.poseY), gi);
-        std::cout<< "Index orig - 60: " << gi << std::endl;
+        // std::cout<< "Index orig - 60: " << gi << std::endl;
         map["points"].setZero();
         map["ground"].setConstant(inOdom.point.poseZ);
         map["groundpatch"].setConstant(0.0000001);
@@ -137,7 +137,7 @@ public:
             initGroundGrid(inOdom);
             return mMap_ptr;
         }
-        std::cout<< "Update"<<std::endl;
+        // std::cout<< "Update"<<std::endl;
         grid_map::GridMap &map = *mMap_ptr;
         tPose poseDiff;
         poseDiff.point.poseX = inOdom.point.poseX - mLastPose.point.poseX;
@@ -165,15 +165,15 @@ public:
                 map.at("groundpatch", idx) = 0.0;
             }
         }
-        std::cout<<"End iterator"<<std::endl;
+        // std::cout<<"End iterator"<<std::endl;
         // We havent moved so we have nothing to do
         if (damage.empty())
             return mMap_ptr;
 
         mLastPose.point= inOdom.point;
         mLastPose.frame_id = inOdom.frame_id;
-        map.convertToDefaultStartIndex();
-        std::cout<<"Update End" << std::endl;
+        // map.convertToDefaultStartIndex();
+        // std::cout<<"Update End" << std::endl;
         return mMap_ptr;
     };
     //Ignore rotation, only consider translation

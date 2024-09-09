@@ -102,24 +102,24 @@ namespace groundgrid
       // wait for results
       std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
       // std::cout<<"Index: "<< minInxrow << "," << maxInxrow<< "   "<< minInxcol << ","<< maxInxcol<< std::endl;
-      std::ofstream file("maxHeight.txt");
-      // Check if the file opened successfully
-      if (!file.is_open())
-      {
-        std::cerr << "Failed to open the file for writing." << std::endl;
-      }
-      file << std::fixed << std::setprecision(5);
+      // std::ofstream file("maxHeight.txt");
+      // // Check if the file opened successfully
+      // if (!file.is_open())
+      // {
+      //   std::cerr << "Failed to open the file for writing." << std::endl;
+      // }
+      // file << std::fixed << std::setprecision(5);
 
-      for (int r = 0; r < map["maxGroundHeight"].rows(); r++)
-      {
-        for (int c = 0; c < map["maxGroundHeight"].cols(); c++)
-        {
-          file << map["maxGroundHeight"](r, c) << "\t";
-        }
-        file << std::endl;
-      }
-      file.close();
-      std::cout << "Grid Map written to file successfully.  " << std::endl;
+      // for (int r = 0; r < map["maxGroundHeight"].rows(); r++)
+      // {
+      //   for (int c = 0; c < map["maxGroundHeight"].cols(); c++)
+      //   {
+      //     file << map["maxGroundHeight"](r, c) << "\t";
+      //   }
+      //   file << std::endl;
+      // }
+      // file.close();
+      // std::cout << "Grid Map written to file successfully.  " << std::endl;
       // std::cout<< "Lidar: " << map["maxGroundHeight"](182,182) << ",  " << map["points"](182,182) << std::endl;
       // join results
       for (const auto &point_index_part : point_index_list)
@@ -439,11 +439,11 @@ namespace groundgrid
       gvl(center_idx, center_idx) = 1.0f;
       tPoint ps;
       // tf2::doTransform(ps, ps, toBase);
-      std::cout<< "Before:"<< ps.poseX << "," << ps.poseY << ","<< ps.poseZ<<std::endl;
+  
       ps.poseX = ps.poseX + toBase.point.poseX;
       ps.poseY = ps.poseY + toBase.point.poseY;
       ps.poseZ = ps.poseZ + toBase.point.poseZ;
-      std::cout<< "After:"<< ps.poseX << "," << ps.poseY << ","<< ps.poseZ<<std::endl;
+  
       // Set center to current vehicle height
       ggl(center_idx, center_idx) = ps.poseZ;
 

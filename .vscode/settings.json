@@ -74,6 +74,7 @@
         "variant": "cpp",
         "bit": "cpp",
         "*.inc": "cpp",
-        "nnls": "cpp"
+        "nnls": "cpp",
+        "filesystem": "cpp"
     }
 }
