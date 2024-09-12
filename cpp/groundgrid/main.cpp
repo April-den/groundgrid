@@ -45,7 +45,7 @@ int main()
   struct dirent *entry;
   std::vector<std::string> pcdFiles;
   int filesRead = 0;
-  int maxFiles = 10;
+  int maxFiles = 10; //the number of frames to read
 
   if (dir == nullptr)
   {
@@ -95,18 +95,6 @@ int main()
       break;
     }
   }
-
-  // const std::string pcdFile = "/home/aiyang/00/pcd/004392.pcd";
-  // readPCDfile(pcdFile, pc);
-  // odom_callback(odomPose);
-  // points_callback(pc, ground_segmentation_);
-  // pc.clear();
-  // odomPose.reset();
-  // const std::string pcdFile1 = "/home/aiyang/00/pcd/004393.pcd";
-
-  // readPCDfile(pcdFile1, pc);
-  // odom_callback(odomPose);
-  // points_callback(pc, ground_segmentation_);
 }
 
 void readPCDfile(const std::string finname, std::vector<tPoint> &points)
@@ -437,7 +425,7 @@ void points_callback(std::vector<tPoint> pc, groundgrid::GroundSegmentation &gro
   std::vector<tPoint> filteredCloud = ground_segmentation_.filter_cloud(pc, origin_pclPoint, mapToBaseTransform, *map_ptr_);
 
   // Write in txt file
-  std::string segmFiName = segmentFileName +".txt";
+  std::string segmFiName = "/home/aiyang/groundgrid/pcd/" + segmentFileName +".txt";
   std::ofstream file(segmFiName);
   // Check if the file opened successfully
   if (!file.is_open())
