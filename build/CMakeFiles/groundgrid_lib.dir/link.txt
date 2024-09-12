@@ -1,2 +1,0 @@
-/usr/bin/ar qc libgroundgrid_lib.a  CMakeFiles/groundgrid_lib.dir/cpp/groundgrid/main.cpp.o CMakeFiles/groundgrid_lib.dir/cpp/groundgrid/test.cpp.o
-/usr/bin/ranlib libgroundgrid_lib.a
