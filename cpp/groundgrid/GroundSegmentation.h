@@ -9,7 +9,6 @@
 #include <algorithm>
 
 extern size_t thread_count; // default 8, max 64, min 1
-extern uint32_t max_ring;
 extern double min_outlier_detection_ground_confidence;
 extern double outlier_tolerance;
 extern double patch_size_change_distance;

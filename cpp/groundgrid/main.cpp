@@ -45,7 +45,7 @@ int main()
   struct dirent *entry;
   std::vector<std::string> pcdFiles;
   int filesRead = 0;
-  int maxFiles = 10; //the number of frames to read
+  int maxFiles = 100; //the number of frames to read
 
   if (dir == nullptr)
   {

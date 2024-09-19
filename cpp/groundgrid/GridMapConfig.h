@@ -5,7 +5,6 @@ double kitti_base_to_baseX = 1.95; //distance between lidar and front wheel in x
 double kitti_base_to_baseY = 0;
 double kitti_base_to_baseZ = -1.73;
 size_t thread_count = 8; // default 8, max 64, min 1
-uint32_t max_ring = 72;
 double min_outlier_detection_ground_confidence = 1.25;
 double outlier_tolerance = 0.1;
 double patch_size_change_distance = 0.0;
