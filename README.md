@@ -9,8 +9,8 @@ Keep the core and rewrite the program to remove dependencies required by [Ground
 - 2024-08-14 Structure completed but segement results are wrong
 - 2024-08-22 Fix the bug while coping point clouds and coordinates transformation
 - 2024-09-02 Successfully segment point cloud of one frame
-- 2024-09-09 Able to visualize the one frame or multiple frames of pointcloud written in  txt file. [visualize](https://github.com/April-den/GroundGridPlay)
-- 2024-09-23 use toml library to write and read configure file
+- 2024-09-09 Able to visualize the one frame or multiple frames of pointcloud written in  txt file. [Visualize URL](https://github.com/April-den/GroundGridPlay)
+- 2024-09-23 Use toml11 library to write and read configure file
 ## Problems Meet
 
 1. While coping 
@@ -35,4 +35,4 @@ Don't know what cause the compile error. Solved by without calling the reload fu
 
 5. Use this command "g++ cpp/groundgrid/main.cpp -o main -lpthread" to make the multi thread computation available. Otherwise, got this "undefined reference to `pthread_create'collect2: error: ld returned 1 exit status". Directly linking static library in tasks.json doesn't work.
 
-6. There maybe something wrong with the CMakeLists.txt. toml11 couldn't be found while compiling. But the "cmake build" successed. If try to use "go to definition", toml.hpp could also be found
+6. There may be something wrong with the CMakeLists.txt. toml11 couldn't be found while compiling. But the "cmake build" successed. If try to use "go to definition", toml.hpp could also be found
