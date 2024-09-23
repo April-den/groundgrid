@@ -75,6 +75,7 @@
         "bit": "cpp",
         "*.inc": "cpp",
         "nnls": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "eigen": "cpp"
     }
 }

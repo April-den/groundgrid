@@ -19,6 +19,5 @@ if(NOT eigen_POPULATED)
   endif()
 endif()
 
-
 include_directories(cpp/groundgrid/test.h)
 link_directories(cpp/groundgrid/test.cpp)

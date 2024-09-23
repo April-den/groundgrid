@@ -4,24 +4,61 @@
 
 #include <Eigen/Eigen>
 #include "GroundGrid.h"
+#include <toml.hpp>
 
 #include <thread>
 #include <algorithm>
 
-extern size_t thread_count; // default 8, max 64, min 1
-extern double min_outlier_detection_ground_confidence;
-extern double outlier_tolerance;
-extern double patch_size_change_distance;
-extern double minimum_distance_factor;
-extern double miminum_point_height_threshold;
-extern double minimum_point_height_obstacle_threshold;
-extern double ground_patch_detection_minimum_point_count_threshold;
-extern double distance_factor;
-extern int point_count_cell_variance_threshold;
-extern double occupied_cells_point_count_factor;
-extern double occupied_cells_decrease_factor;
+// extern size_t thread_count; // default 8, max 64, min 1
+// extern double min_outlier_detection_ground_confidence;
+// extern double outlier_tolerance;
+// extern double patch_size_change_distance;
+// extern double minimum_distance_factor;
+// extern double miminum_point_height_threshold;
+// extern double minimum_point_height_obstacle_threshold;
+// extern double ground_patch_detection_minimum_point_count_threshold;
+// extern double distance_factor;
+// extern int point_count_cell_variance_threshold;
+// extern double occupied_cells_point_count_factor;
+// extern double occupied_cells_decrease_factor;
+
+size_t thread_count; // default 8, max 64, min 1
+double min_outlier_detection_ground_confidence;
+double outlier_tolerance;
+double patch_size_change_distance;
+double minimum_distance_factor;
+double miminum_point_height_threshold;
+double minimum_point_height_obstacle_threshold;
+double ground_patch_detection_minimum_point_count_threshold;
+double distance_factor;
+int point_count_cell_variance_threshold;
+double occupied_cells_point_count_factor;
+double occupied_cells_decrease_factor;
 
 int maxInxrow = -999, maxInxcol = -999, minInxrow = 999, minInxcol = 999;
+
+void initConfig()
+{
+  std::ifstream config_file("../segment.conf");
+  if (!config_file.is_open())
+  {
+    std::cerr << "Failed to open config file!" << std::endl;
+    return;
+  }
+  const auto data = toml::parse(config_file);
+  thread_count = toml::find<size_t>(data, "thread_count");
+  min_outlier_detection_ground_confidence = toml::find<double>(data, "min_outlier_detection_ground_confidence");
+  outlier_tolerance = toml::find<double>(data, "outlier_tolerance");
+  patch_size_change_distance = toml::find<double>(data, "patch_size_change_distance");
+  minimum_distance_factor = toml::find<double>(data, "minimum_distance_factor");
+  miminum_point_height_threshold= toml::find<double>(data, "miminum_point_height_threshold");
+  minimum_point_height_obstacle_threshold = toml::find<double>(data, "minimum_point_height_obstacle_threshold");
+  ground_patch_detection_minimum_point_count_threshold = toml::find<double>(data, "ground_patch_detection_minimum_point_count_threshold");
+  distance_factor = toml::find<double>(data, "distance_factor");
+  point_count_cell_variance_threshold = toml::find<int>(data, "point_count_cell_variance_threshold");
+  occupied_cells_point_count_factor = toml::find<double>(data, "occupied_cells_point_count_factor");
+  occupied_cells_decrease_factor = toml::find<double>(data, "occupied_cells_decrease_factor");
+}
 
 namespace groundgrid
 {
@@ -31,6 +68,7 @@ namespace groundgrid
     GroundSegmentation() {};
     void init(const size_t dimension, const float &resolution)
     {
+      initConfig();
       const size_t cellCount = std::round(dimension / resolution);
       expectedPoints.resize(cellCount, cellCount);
       for (size_t i = 0; i < cellCount; ++i)
@@ -100,26 +138,6 @@ namespace groundgrid
 
       // wait for results
       std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
-      // std::cout<<"Index: "<< minInxrow << "," << maxInxrow<< "   "<< minInxcol << ","<< maxInxcol<< std::endl;
-      // std::ofstream file("maxHeight.txt");
-      // // Check if the file opened successfully
-      // if (!file.is_open())
-      // {
-      //   std::cerr << "Failed to open the file for writing." << std::endl;
-      // }
-      // file << std::fixed << std::setprecision(5);
-
-      // for (int r = 0; r < map["maxGroundHeight"].rows(); r++)
-      // {
-      //   for (int c = 0; c < map["maxGroundHeight"].cols(); c++)
-      //   {
-      //     file << map["maxGroundHeight"](r, c) << "\t";
-      //   }
-      //   file << std::endl;
-      // }
-      // file.close();
-      // std::cout << "Grid Map written to file successfully.  " << std::endl;
-      // std::cout<< "Lidar: " << map["maxGroundHeight"](182,182) << ",  " << map["points"](182,182) << std::endl;
       // join results
       for (const auto &point_index_part : point_index_list)
         point_index.insert(point_index.end(), point_index_part.begin(), point_index_part.end());
@@ -438,11 +456,11 @@ namespace groundgrid
       gvl(center_idx, center_idx) = 1.0f;
       tPoint ps;
       // tf2::doTransform(ps, ps, toBase);
-  
+
       ps.poseX = ps.poseX + toBase.point.poseX;
       ps.poseY = ps.poseY + toBase.point.poseY;
       ps.poseZ = ps.poseZ + toBase.point.poseZ;
-  
+
       // Set center to current vehicle height
       ggl(center_idx, center_idx) = ps.poseZ;
 

@@ -8,7 +8,7 @@
 #include <Eigen/LU>
 #include "GridMap.h"
 #include "GroundGrid.h"
-#include "GridMapConfig.h"
+// #include "GridMapConfig.h"
 #include "GroundSegmentation.h"
 
 using GroundGridPtr = std::shared_ptr<GroundGrid>;

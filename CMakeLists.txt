@@ -20,6 +20,11 @@ include(cpp/cmake/CompilerOptions.cmake)
 include(cpp/cmake/dependencies.cmake)
 add_library(groundgrid_lib STATIC)
 
+set(TOML11_INCLUDE_DIR /usr/include/toml11)
+include_directories(${TOML11_INCLUDE_DIR})
+add_library(toml11 INTERFACE)
+target_include_directories(toml11 INTERFACE ${TOML11_INCLUDE_DIR})
+
 target_sources(groundgrid_lib PRIVATE cpp/groundgrid/main.cpp
                 cpp/groundgrid/test.cpp
             #    cpp/groundgrid/GroundGrid.cpp 
@@ -30,6 +35,7 @@ target_sources(groundgrid_lib PRIVATE cpp/groundgrid/main.cpp
                )
 # find_package(Threads REQUIRED)
 # target_link_libraries(groundgrid_lib PUBLIC Threads::Threads)
+target_link_libraries(groundgrid_lib PUBLIC toml11)
 target_link_libraries(groundgrid_lib PUBLIC pthread)
 target_link_libraries(groundgrid_lib PUBLIC Eigen3::Eigen)
 set_global_target_properties(groundgrid_lib)
